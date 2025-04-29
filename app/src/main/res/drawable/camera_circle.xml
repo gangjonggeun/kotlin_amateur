@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <corners android:radius="20dp" /> <!-- 원형 모서리 설정 -->
+    <solid android:color="@color/light_gray" /> <!-- 배경색 -->
+</shape>

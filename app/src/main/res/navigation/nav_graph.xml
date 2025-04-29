@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/nav_graph"
+    app:startDestination="@id/homeFragment">
+
+    <fragment
+        android:id="@+id/homeFragment"
+        android:name="com.example.kotlin_amateur.navi.home.HomeFragment"
+        android:label="홈" >
+        <action
+            android:id="@+id/action_home_to_addPost"
+            app:destination="@id/addPostFragment" />
+        <action
+            android:id="@+id/action_home_to_localPromo"
+            app:destination="@id/localPromoFragment" />
+        <action
+            android:id="@+id/action_home_to_lectureDetail"
+            app:destination="@id/LectureDetailFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/chatFragment"
+        android:name="com.example.kotlin_amateur.navi.chat.ChatFragment"
+        android:label="채팅" />
+
+    <fragment
+        android:id="@+id/myProfileFragment"
+        android:name="com.example.kotlin_amateur.navi.profile.ProfileFragment"
+        android:label="내 프로필" />
+
+    <fragment
+        android:id="@+id/addPostFragment"
+        android:name="com.example.kotlin_amateur.navi.home.FloatingAddFragment"
+        android:label="글 추가" />
+
+    <fragment
+        android:id="@+id/localPromoFragment"
+        android:label="지역 홍보" />
+
+    <!-- 🔥 새로 추가한 상세보기 프래그먼트 -->
+    <fragment
+        android:id="@+id/LectureDetailFragment"
+        android:name="com.example.kotlin_amateur.navi.home.LectureDetailFragment"
+        android:label="게시글 상세보기" >
+
+        <argument
+            android:name="title"
+            app:argType="string" />
+        <argument
+            android:name="content"
+            app:argType="string" />
+        <argument
+            android:name="images"
+            app:argType="string[]" />
+
+    </fragment>
+</navigation>

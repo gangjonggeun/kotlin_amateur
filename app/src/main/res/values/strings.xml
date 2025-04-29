@@ -1,0 +1,14 @@
+<resources>
+    <string name="app_name">kotlin_amateur</string>
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
+    <string name="floating_btn_add">추가하기</string>
+    <string name="floating_btn_region">지역홍보</string>
+
+    <string name="search">검색</string>
+    <string name="add_title">강의 올리기</string>
+    <string name="add_title_input">제목</string>
+    <string name="add_content_input">내용</string>
+    <string name="set_region">지역 설정</string>
+
+</resources>
