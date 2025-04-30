@@ -2,6 +2,7 @@ package com.example.kotlin_amateur.model
 
 
 data class DataModel(
+    val id: String,         // 🔥 고유 ID 추가
     val title: String,
     val content: String,
     val images: List<String>,

@@ -29,6 +29,7 @@ import retrofit2.Callback
 import retrofit2.Response
 import java.io.File
 import java.io.FileOutputStream
+import java.util.UUID
 
 class FloatingAddFragment : Fragment() {
 
@@ -97,6 +98,7 @@ class FloatingAddFragment : Fragment() {
         val imageUrls = mutableListOf<String>()
         val client = RetrofitClient.apiService
         val contentResolver = context.contentResolver
+        val id = UUID.randomUUID().toString()
 
         CoroutineScope(Dispatchers.IO).launch {
             imageUris.forEach { uri ->
@@ -117,7 +119,7 @@ class FloatingAddFragment : Fragment() {
                 }
             }
 
-            val dataModel = DataModel(title = title, content = content, images = imageUrls)
+            val dataModel = DataModel(id = id, title = title, content = content, images = imageUrls)
             client.submitData(dataModel).enqueue(object : Callback<SubmitResponse> {
                 override fun onResponse(call: Call<SubmitResponse>, response: Response<SubmitResponse>) {
                     if (response.isSuccessful) {

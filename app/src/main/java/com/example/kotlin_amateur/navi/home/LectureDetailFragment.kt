@@ -1,17 +1,22 @@
 package com.example.kotlin_amateur.navi.home
 
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.LinearLayout
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import androidx.viewpager2.widget.ViewPager2
 import com.example.kotlin_amateur.R
 import com.example.kotlin_amateur.databinding.FragmentLectureDetailsBinding
+import com.example.kotlin_amateur.util.LectureDetailViewModel
 import com.example.kotlin_amateur.util.LectureDetailimageAdapter
+import kotlinx.coroutines.launch
 
 class LectureDetailFragment : Fragment() {
     private var _binding: FragmentLectureDetailsBinding? = null
@@ -19,6 +24,10 @@ class LectureDetailFragment : Fragment() {
     private lateinit var viewPagerAdapter: LectureDetailimageAdapter
 
     private var isLiked = false // 좋아요 상태 저장용
+
+    private lateinit var postViewModel: LectureDetailViewModel
+
+    private lateinit var id:String
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -35,12 +44,17 @@ class LectureDetailFragment : Fragment() {
         val images = args.images.toList()
         val title = args.title
         val content = args.content
+        id = args.id
+
 
         viewPagerAdapter = LectureDetailimageAdapter(images)
         binding.detailViewPager.adapter = viewPagerAdapter
 
         binding.tvDetailTitle.text = title
         binding.tvDetailContent.text = content
+
+        postViewModel = ViewModelProvider(this).get(LectureDetailViewModel::class.java)
+
 
         setupIndicators(images.size)   // 이미지 개수만큼 인디케이터 세팅
         setCurrentIndicator(0)         // 초기 포지션 0 활성화
@@ -60,36 +74,18 @@ class LectureDetailFragment : Fragment() {
         binding.likeButton.setOnClickListener {
             toggleHeart2()
         }
-    }
-    private fun toggleHeart() {
-        if (isLiked) {
-            // 좋아요 취소
-            binding.likeButton.setImageResource(R.drawable.ic_heart_empty)
-        } else {
-            // 좋아요 추가
-            binding.likeButton.setImageResource(R.drawable.ic_heart_filled)
-        }
-        isLiked = !isLiked
 
-        // ❤️ 애니메이션 추가
-        binding.likeButton.animate()
-            .scaleX(1.2f)    // 120% 커졌다가
-            .scaleY(1.2f)
-            .setDuration(150) // 150ms 동안 커지고
-            .withEndAction {
-                binding.likeButton.animate()
-                    .scaleX(1f) // 다시 원래 크기로
-                    .scaleY(1f)
-                    .setDuration(150)
-                    .start()
-            }
-            .start()
+        likesAndCommentObserve()
     }
+
     private fun toggleHeart2() {
         if (isLiked) {
             binding.likeButton.setImageResource(R.drawable.ic_heart_empty)
+            postViewModel.sendDecreaseLikeRequest(id)
+            postViewModel.sendIncreaseLikeRequest(id)
         } else {
             binding.likeButton.setImageResource(R.drawable.ic_heart_filled)
+            postViewModel.sendIncreaseLikeRequest(id)
         }
         isLiked = !isLiked
 
@@ -127,11 +123,24 @@ class LectureDetailFragment : Fragment() {
             .start()
     }
 
+    private fun likesAndCommentObserve(){
+        // 좋아요 수 관찰
+        postViewModel.likeCount.observe(viewLifecycleOwner) { count ->
+            binding.likeCountText.text = count.toString()
+        }
+
+        // 댓글 수 관찰
+        postViewModel.commentCount.observe(viewLifecycleOwner) { count ->
+            binding.commentCountText.text = "$count"
+        }
+    }
+
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
     }
 
+    //인디케이터 설정
     private fun setupIndicators(count: Int) {
         val indicators = arrayOfNulls<ImageView>(count)
         val layoutParams = LinearLayout.LayoutParams(
@@ -148,8 +157,10 @@ class LectureDetailFragment : Fragment() {
             }
             binding.indicatorLayout.addView(indicators[i])
         }
-    }
-
+    }//인디케이터 설정끝
+    
+    
+    //인디케이터 현재 위치 설정
     private fun setCurrentIndicator(index: Int) {
         val childCount = binding.indicatorLayout.childCount
         for (i in 0 until childCount) {
@@ -160,8 +171,10 @@ class LectureDetailFragment : Fragment() {
                 imageView.setImageResource(R.drawable.indicator_inactive)
             }
         }
-    }
+    }// 인디케이터 설정끝
+
 
 }
+
 
 

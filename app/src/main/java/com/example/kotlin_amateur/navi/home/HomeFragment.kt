@@ -45,6 +45,7 @@ class HomeFragment : Fragment() {
         adapter = HomeRecyclerViewAdapter(arrayListOf()){ selectedItem ->
 
             val action = HomeFragmentDirections.actionHomeToLectureDetail(
+                id = selectedItem.id,
                 title = selectedItem.title,
                 content = selectedItem.content,
                 images = selectedItem.images.toTypedArray() // List<String> -> Array<String> 변환
@@ -62,6 +63,7 @@ class HomeFragment : Fragment() {
         viewModel.dataList.observe(viewLifecycleOwner) { newList ->
             val recyclerList = newList.map {
                 DataModel(
+                    id = it.id,
                     images = it.images, // 이미지 URL (String)
                     title = it.title,
                     content = it.content,

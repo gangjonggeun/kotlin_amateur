@@ -40,17 +40,5 @@ class HomeViewModel(): ViewModel() {
         loadDataFromServer()
     }
 
-    private fun loadDummyData() {
-        val dummyData = listOf(
-            DataModel(
-                title = "test",
-                content = "1번입니다.",
-                images = listOf("img"), // 임시 샘플 이미지
-                likes = 10,
-                comments = 3
-            )
-        )
 
-        _dataList.value = dummyData
-    }
 }

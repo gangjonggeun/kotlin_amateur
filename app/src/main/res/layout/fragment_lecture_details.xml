@@ -127,7 +127,7 @@
                 android:id="@+id/commentLayout"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
+                android:orientation="horizontal"
                 android:padding="16dp">
 
                 <TextView
@@ -136,8 +136,18 @@
                     android:layout_height="wrap_content"
                     android:text="댓글"
                     android:textColor="@android:color/black"
-                    android:textSize="18sp"
+                    android:textSize="20sp"
                     android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/commentCountText"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="0"
+                    android:layout_marginLeft="15dp"
+                    android:textColor="@android:color/darker_gray"
+                    android:textSize="15sp"
+                    />
             </LinearLayout>
 
         </LinearLayout>
