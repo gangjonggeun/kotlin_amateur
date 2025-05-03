@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_margin="6dp"
+    app:cardElevation="2dp"
+    app:cardCornerRadius="6dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        >
+
+        <!-- 댓글 영역: 프로필 + ID + 시간 + 내용 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <!-- 프로필 이미지 -->
+            <ImageView
+                android:id="@+id/comment_profile_image"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:src="@drawable/ic_profile"
+                android:scaleType="centerCrop"
+                android:background="@drawable/circle_background" />
+
+            <!-- ID + 시간 + 내용 묶음 -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:layout_marginStart="8dp">
+
+                <!-- ID + 시간 -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:id="@+id/comment_writer_id"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="user123456789123456"
+                        android:textSize="13sp"
+                        android:textColor="#999999"
+                        android:maxLines="1"
+                        android:ellipsize="end" />
+
+                    <TextView
+                        android:id="@+id/comment_timestamp"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="2024-05-01 14:02"
+                        android:textSize="10sp"
+                        android:textColor="#BBBBBB"
+                        android:layout_marginStart="8dp" />
+                </LinearLayout>
+
+                <!-- 댓글 내용 -->
+                <TextView
+                    android:id="@+id/comment_content"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="댓글 내용입니다"
+                    android:textColor="#333333"
+                    android:textSize="15sp"
+                    android:maxLines="3"
+                    android:ellipsize="end"
+                    android:layout_marginTop="4dp" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- 답글 입력창 (기본 GONE 상태, 댓글 클릭 시 VISIBLE) -->
+        <LinearLayout
+            android:id="@+id/reply_input_layout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="6dp"
+            android:visibility="gone"
+            android:paddingLeft="30dp">
+
+            <EditText
+                android:id="@+id/reply_edit_text"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:hint="답글 입력..."
+                android:textColor="@android:color/black"
+                android:padding="10dp"
+                android:textSize="14sp"/>
+
+            <ImageButton
+                android:paddingTop="10dp"
+                android:id="@+id/reply_send_button"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@android:color/transparent"
+                android:contentDescription="답글 등록"
+                android:src="@drawable/ic_send"
+                app:tint="@color/gray" />
+        </LinearLayout>
+
+        <!-- 답글 리스트 -->
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/reply_recycler"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:paddingStart="48dp" />
+        <!-- 댓글 구분 선 -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginTop="8dp"
+            android:layout_marginStart="20dp"
+            android:layout_marginEnd="20dp"
+            android:background="@color/light_gray" />
+    </LinearLayout>
+</LinearLayout>

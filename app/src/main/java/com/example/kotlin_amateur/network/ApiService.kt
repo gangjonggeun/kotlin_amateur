@@ -12,20 +12,26 @@ import retrofit2.http.Part
 
 interface ApiService {
     @POST("/submit")
-    fun submitData(@Body data: DataModel): Call<SubmitResponse>
+    suspend fun submitData(@Body data: DataModel): Response<SubmitResponse> // ✅ 수정
 
     @GET("/getdata")
-    fun getData(): Call<List<DataModel>>
+    suspend fun getData(): Response<List<DataModel>> // ✅ 핵심 수정
 
     @Multipart
     @POST("/upload_image")
-    fun uploadImage(@Part image: MultipartBody.Part): Call<ImageUploadResponse>
+    fun uploadImage(@Part image: MultipartBody.Part): Call<ImageUploadResponse> // ❗ 유지 가능
 
     @POST("/increase_likes")
     suspend fun increaseLikes(@Body body: Map<String, String>): Response<Unit>
 
     @POST("/decrease_likes")
     suspend fun decreaseLikes(@Body body: Map<String, String>): Response<Unit>
+
+    @POST("/add_comment")
+    suspend fun addComment(@Body body: Map<String, String>): Response<Unit>
+
+    @POST("/add_reply")
+    suspend fun addReply(@Body body: Map<String, String>): Response<Unit>
 }
 
 data class ImageUploadResponse(

@@ -11,13 +11,14 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
+import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.viewpager2.widget.ViewPager2
 import com.example.kotlin_amateur.R
-import com.example.kotlin_amateur.databinding.FragmentLectureDetailsBinding
+import com.example.kotlin_amateur.model.DataModel
+import com.example.kotlin_amateur.util.CommentAdapter
 import com.example.kotlin_amateur.util.LectureDetailViewModel
 import com.example.kotlin_amateur.util.LectureDetailimageAdapter
-import kotlinx.coroutines.launch
-
+import com.example.kotlin_amateur.databinding.FragmentLectureDetailsBinding
 class LectureDetailFragment : Fragment() {
     private var _binding: FragmentLectureDetailsBinding? = null
     private val binding get() = _binding!!
@@ -26,8 +27,9 @@ class LectureDetailFragment : Fragment() {
     private var isLiked = false // 좋아요 상태 저장용
 
     private lateinit var postViewModel: LectureDetailViewModel
+    private lateinit var post: DataModel
 
-    private lateinit var id:String
+    private lateinit var commentAdapter: CommentAdapter
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -40,27 +42,37 @@ class LectureDetailFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        val args = LectureDetailFragmentArgs.fromBundle(requireArguments())
-        val images = args.images.toList()
-        val title = args.title
-        val content = args.content
-        id = args.id
+        post =
+            LectureDetailFragmentArgs.fromBundle(requireArguments()).post //arguments data_molde 들어있는
 
-
-        viewPagerAdapter = LectureDetailimageAdapter(images)
+        viewPagerAdapter = LectureDetailimageAdapter(post.images)
         binding.detailViewPager.adapter = viewPagerAdapter
 
-        binding.tvDetailTitle.text = title
-        binding.tvDetailContent.text = content
 
         postViewModel = ViewModelProvider(this).get(LectureDetailViewModel::class.java)
+        postViewModel.initLikeAndComment(post.likes, post.comments) // 하트 및 댓글 수 넣기
 
+        setupCommentRecyclerView()
+        postViewModel.loadComments(post.id) // 댓글 로딩
 
-        setupIndicators(images.size)   // 이미지 개수만큼 인디케이터 세팅
+        setupIndicators(post.images.size)   // 이미지 개수만큼 인디케이터 세팅
         setCurrentIndicator(0)         // 초기 포지션 0 활성화
 
+
+        //댓글 보내기
+        binding.sendCommentButton.setOnClickListener {
+            val text = binding.commentEditText.text.toString()
+            if (text.isNotBlank()) {
+                postViewModel.addComment(post.id, text)
+                binding.commentEditText.text.clear()
+            }
+        }
+
+
+
         // ViewPager2 페이지 변경 리스너
-        binding.detailViewPager.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
+        binding.detailViewPager.registerOnPageChangeCallback(object :
+            ViewPager2.OnPageChangeCallback() {
             override fun onPageSelected(position: Int) {
                 super.onPageSelected(position)
                 setCurrentIndicator(position)  // 페이지 바뀔 때 인디케이터 업데이트
@@ -72,20 +84,19 @@ class LectureDetailFragment : Fragment() {
 
         //  하트 클릭 리스너
         binding.likeButton.setOnClickListener {
-            toggleHeart2()
+            toggleHeart()
         }
 
         likesAndCommentObserve()
     }
 
-    private fun toggleHeart2() {
+    private fun toggleHeart() {
         if (isLiked) {
             binding.likeButton.setImageResource(R.drawable.ic_heart_empty)
-            postViewModel.sendDecreaseLikeRequest(id)
-            postViewModel.sendIncreaseLikeRequest(id)
+            postViewModel.sendDecreaseLikeRequest(post.id)
         } else {
             binding.likeButton.setImageResource(R.drawable.ic_heart_filled)
-            postViewModel.sendIncreaseLikeRequest(id)
+            postViewModel.sendIncreaseLikeRequest(post.id)
         }
         isLiked = !isLiked
 
@@ -123,15 +134,10 @@ class LectureDetailFragment : Fragment() {
             .start()
     }
 
-    private fun likesAndCommentObserve(){
+    private fun likesAndCommentObserve() {
         // 좋아요 수 관찰
         postViewModel.likeCount.observe(viewLifecycleOwner) { count ->
-            binding.likeCountText.text = count.toString()
-        }
-
-        // 댓글 수 관찰
-        postViewModel.commentCount.observe(viewLifecycleOwner) { count ->
-            binding.commentCountText.text = "$count"
+            commentAdapter.updateLikeCount(count)
         }
     }
 
@@ -158,8 +164,8 @@ class LectureDetailFragment : Fragment() {
             binding.indicatorLayout.addView(indicators[i])
         }
     }//인디케이터 설정끝
-    
-    
+
+
     //인디케이터 현재 위치 설정
     private fun setCurrentIndicator(index: Int) {
         val childCount = binding.indicatorLayout.childCount
@@ -173,6 +179,23 @@ class LectureDetailFragment : Fragment() {
         }
     }// 인디케이터 설정끝
 
+    private fun setupCommentRecyclerView() {
+        commentAdapter = CommentAdapter(
+            context = requireContext(),
+            comments = emptyList(),
+            userPost =  post, // ✅ 헤더용 데이터 전달
+            onReplySubmit = { commentId, replyContent ->
+                postViewModel.addReply(post.id, commentId, replyContent)
+            }
+        )
+
+        binding.commentRecyclerView.layoutManager = LinearLayoutManager(requireContext())
+        binding.commentRecyclerView.adapter = commentAdapter
+
+        postViewModel.comments.observe(viewLifecycleOwner) { updatedList ->
+            commentAdapter.updateList(updatedList)
+        }
+    }
 
 }
 

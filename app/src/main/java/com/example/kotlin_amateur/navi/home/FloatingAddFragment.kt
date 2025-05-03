@@ -69,7 +69,8 @@ class FloatingAddFragment : Fragment() {
             }
         }
 
-        binding.addRecyclerView.layoutManager = LinearLayoutManager(requireContext(), LinearLayoutManager.HORIZONTAL, false)
+        binding.addRecyclerView.layoutManager =
+            LinearLayoutManager(requireContext(), LinearLayoutManager.HORIZONTAL, false)
         binding.addRecyclerView.adapter = imageAdapter
 
         binding.submitBtn.setOnClickListener { submit() }
@@ -83,9 +84,24 @@ class FloatingAddFragment : Fragment() {
         val contentText = binding.editTextContent.text.toString()
 
         when {
-            titleText.isBlank() -> Toast.makeText(requireContext(), "제목을 입력해주세요", Toast.LENGTH_SHORT).show()
-            contentText.isBlank() -> Toast.makeText(requireContext(), "내용을 입력해주세요", Toast.LENGTH_SHORT).show()
-            imagesUriList.isEmpty() -> Toast.makeText(requireContext(), "사진을 한 장 이상 선택해주세요", Toast.LENGTH_SHORT).show()
+            titleText.isBlank() -> Toast.makeText(
+                requireContext(),
+                "제목을 입력해주세요",
+                Toast.LENGTH_SHORT
+            ).show()
+
+            contentText.isBlank() -> Toast.makeText(
+                requireContext(),
+                "내용을 입력해주세요",
+                Toast.LENGTH_SHORT
+            ).show()
+
+            imagesUriList.isEmpty() -> Toast.makeText(
+                requireContext(),
+                "사진을 한 장 이상 선택해주세요",
+                Toast.LENGTH_SHORT
+            ).show()
+
             else -> {
                 submitDataToServer(titleText, contentText, imagesUriList, requireContext())
                 Toast.makeText(requireContext(), "입력 완료!", Toast.LENGTH_SHORT).show()
@@ -94,46 +110,94 @@ class FloatingAddFragment : Fragment() {
         }
     }
 
-    private fun submitDataToServer(title: String, content: String, imageUris: List<Uri>, context: Context) {
+    //
+//    private fun submitDataToServer(title: String, content: String, imageUris: List<Uri>, context: Context) {
+//        val imageUrls = mutableListOf<String>()
+//        val client = RetrofitClient.apiService
+//        val contentResolver = context.contentResolver
+//        val id = UUID.randomUUID().toString()
+//
+//        CoroutineScope(Dispatchers.IO).launch {
+//            imageUris.forEach { uri ->
+//                val inputStream = contentResolver.openInputStream(uri)
+//                val file = File.createTempFile("upload", ".jpg", context.cacheDir)
+//                val outputStream = FileOutputStream(file)
+//                inputStream?.copyTo(outputStream)
+//                inputStream?.close()
+//                outputStream.close()
+//
+//                val requestFile = file.asRequestBody("image/*".toMediaTypeOrNull())
+//                val body = MultipartBody.Part.createFormData("image", file.name, requestFile)
+//
+//                val response = client.uploadImage(body).execute()
+//                if (response.isSuccessful) {
+//                    val url = response.body()?.image_url ?: ""
+//                    imageUrls.add(url)
+//                }
+//            }
+//
+//            val dataModel = DataModel(id = id, title = title, content = content, images = imageUrls)
+//            client.submitData(dataModel).enqueue(object : Callback<SubmitResponse> {
+//                override fun onResponse(call: Call<SubmitResponse>, response: Response<SubmitResponse>) {
+//                    if (response.isSuccessful) {
+//                        Log.d("Submit", "Success")
+//                    }
+//                }
+//
+//                override fun onFailure(call: Call<SubmitResponse>, t: Throwable) {
+//                    Log.e("Submit", "Error", t)
+//                }
+//            })
+//        }
+//    }
+    private fun submitDataToServer(
+        title: String,
+        content: String,
+        imageUris: List<Uri>,
+        context: Context
+    ) {
         val imageUrls = mutableListOf<String>()
         val client = RetrofitClient.apiService
         val contentResolver = context.contentResolver
         val id = UUID.randomUUID().toString()
 
         CoroutineScope(Dispatchers.IO).launch {
-            imageUris.forEach { uri ->
-                val inputStream = contentResolver.openInputStream(uri)
-                val file = File.createTempFile("upload", ".jpg", context.cacheDir)
-                val outputStream = FileOutputStream(file)
-                inputStream?.copyTo(outputStream)
-                inputStream?.close()
-                outputStream.close()
+            try {
+                // 이미지 업로드 (forEach 비동기 처리)
+                for (uri in imageUris) {
+                    val inputStream = contentResolver.openInputStream(uri)
+                    val file = File.createTempFile("upload", ".jpg", context.cacheDir)
+                    val outputStream = FileOutputStream(file)
+                    inputStream?.copyTo(outputStream)
+                    inputStream?.close()
+                    outputStream.close()
 
-                val requestFile = file.asRequestBody("image/*".toMediaTypeOrNull())
-                val body = MultipartBody.Part.createFormData("image", file.name, requestFile)
+                    val requestFile = file.asRequestBody("image/*".toMediaTypeOrNull())
+                    val body = MultipartBody.Part.createFormData("image", file.name, requestFile)
 
-                val response = client.uploadImage(body).execute()
-                if (response.isSuccessful) {
-                    val url = response.body()?.image_url ?: ""
-                    imageUrls.add(url)
-                }
-            }
-
-            val dataModel = DataModel(id = id, title = title, content = content, images = imageUrls)
-            client.submitData(dataModel).enqueue(object : Callback<SubmitResponse> {
-                override fun onResponse(call: Call<SubmitResponse>, response: Response<SubmitResponse>) {
+                    val response = client.uploadImage(body).execute()  // 여긴 여전히 Call이라 유지 가능
                     if (response.isSuccessful) {
-                        Log.d("Submit", "Success")
+                        val url = response.body()?.image_url ?: ""
+                        imageUrls.add(url)
                     }
                 }
 
-                override fun onFailure(call: Call<SubmitResponse>, t: Throwable) {
-                    Log.e("Submit", "Error", t)
-                }
-            })
-        }
-    }
+                // 서버에 전체 데이터 전송
+                val dataModel =
+                    DataModel(id = id, title = title, content = content, images = imageUrls)
+                val submitResponse = client.submitData(dataModel) // ✅ suspend fun 이므로 바로 호출
 
+                if (submitResponse.isSuccessful) {
+                    Log.d("Submit", "Success")
+                } else {
+                    Log.e("Submit", "서버 응답 실패: ${submitResponse.code()}")
+                }
+
+            } catch (e: Exception) {
+                Log.e("Submit", "예외 발생", e)
+            }
+        }
+    } // submitData 끝
 
     private fun addImage() {
         Log.d("FloatingAddFragment", "addImage() 호출됨")

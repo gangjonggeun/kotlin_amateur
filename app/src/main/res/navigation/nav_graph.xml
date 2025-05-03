@@ -45,25 +45,7 @@
         android:label="게시글 상세보기" >
 
         <argument
-            android:name="title"
-            app:argType="string" />
-        <argument
-            android:name="content"
-            app:argType="string" />
-        <argument
-            android:name="id"
-            app:argType="string" />
-        <argument
-            android:name="images"
-            app:argType="string[]" />
-        <argument
-            android:name="likes"
-            app:argType="int" />
-        <argument
-            android:name="likes"
-            app:argType="int" />
-        <argument
-            android:name="comments"
-            app:argType="int" />
+            android:name="post"
+            app:argType="com.example.kotlin_amateur.model.DataModel" />
     </fragment>
 </navigation>

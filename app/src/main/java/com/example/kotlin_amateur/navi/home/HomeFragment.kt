@@ -44,12 +44,7 @@ class HomeFragment : Fragment() {
 
         adapter = HomeRecyclerViewAdapter(arrayListOf()){ selectedItem ->
 
-            val action = HomeFragmentDirections.actionHomeToLectureDetail(
-                id = selectedItem.id,
-                title = selectedItem.title,
-                content = selectedItem.content,
-                images = selectedItem.images.toTypedArray() // List<String> -> Array<String> 변환
-            )
+            val action = HomeFragmentDirections.actionHomeToLectureDetail(post = selectedItem)
             findNavController().navigate(action)
         }
 
@@ -140,7 +135,12 @@ class HomeFragment : Fragment() {
           findNavController().navigate(R.id.addPostFragment)
     }
 
-
+    override fun onResume() {
+        super.onResume()
+        // 자동 새로고침 트리거
+        swipeRefreshLayout.isRefreshing = true
+        viewModel.refreshData()
+    }
 
     //스크롤시 플로팅버튼 안보이게
     private fun setupScrollListener() {
