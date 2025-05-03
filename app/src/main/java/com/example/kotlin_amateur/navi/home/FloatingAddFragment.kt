@@ -73,8 +73,12 @@ class FloatingAddFragment : Fragment() {
             LinearLayoutManager(requireContext(), LinearLayoutManager.HORIZONTAL, false)
         binding.addRecyclerView.adapter = imageAdapter
 
+
+
         binding.submitBtn.setOnClickListener { submit() }
         binding.imageAddBtnLayout.setOnClickListener { addImage() }
+
+
 
         return binding.root
     }
@@ -110,46 +114,7 @@ class FloatingAddFragment : Fragment() {
         }
     }
 
-    //
-//    private fun submitDataToServer(title: String, content: String, imageUris: List<Uri>, context: Context) {
-//        val imageUrls = mutableListOf<String>()
-//        val client = RetrofitClient.apiService
-//        val contentResolver = context.contentResolver
-//        val id = UUID.randomUUID().toString()
-//
-//        CoroutineScope(Dispatchers.IO).launch {
-//            imageUris.forEach { uri ->
-//                val inputStream = contentResolver.openInputStream(uri)
-//                val file = File.createTempFile("upload", ".jpg", context.cacheDir)
-//                val outputStream = FileOutputStream(file)
-//                inputStream?.copyTo(outputStream)
-//                inputStream?.close()
-//                outputStream.close()
-//
-//                val requestFile = file.asRequestBody("image/*".toMediaTypeOrNull())
-//                val body = MultipartBody.Part.createFormData("image", file.name, requestFile)
-//
-//                val response = client.uploadImage(body).execute()
-//                if (response.isSuccessful) {
-//                    val url = response.body()?.image_url ?: ""
-//                    imageUrls.add(url)
-//                }
-//            }
-//
-//            val dataModel = DataModel(id = id, title = title, content = content, images = imageUrls)
-//            client.submitData(dataModel).enqueue(object : Callback<SubmitResponse> {
-//                override fun onResponse(call: Call<SubmitResponse>, response: Response<SubmitResponse>) {
-//                    if (response.isSuccessful) {
-//                        Log.d("Submit", "Success")
-//                    }
-//                }
-//
-//                override fun onFailure(call: Call<SubmitResponse>, t: Throwable) {
-//                    Log.e("Submit", "Error", t)
-//                }
-//            })
-//        }
-//    }
+
     private fun submitDataToServer(
         title: String,
         content: String,
@@ -184,7 +149,7 @@ class FloatingAddFragment : Fragment() {
 
                 // 서버에 전체 데이터 전송
                 val dataModel =
-                    DataModel(id = id, title = title, content = content, images = imageUrls)
+                    DataModel(id = id, title = title, content = content, images = imageUrls )
                 val submitResponse = client.submitData(dataModel) // ✅ suspend fun 이므로 바로 호출
 
                 if (submitResponse.isSuccessful) {

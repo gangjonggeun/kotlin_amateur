@@ -102,6 +102,18 @@
                 android:textColor="@android:color/black"
                 android:textSize="13sp"
                 android:layout_marginStart="6dp" />
+            <Space
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1" />
+            <TextView
+                android:id="@+id/postTimestampText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="2025-04-12"
+                android:textColor="@color/light_gray"
+                android:textSize="13sp"
+                android:layout_marginStart="40dp" />
         </LinearLayout>
         <View
             android:layout_width="match_parent"

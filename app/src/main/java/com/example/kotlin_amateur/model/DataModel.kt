@@ -3,6 +3,9 @@ package com.example.kotlin_amateur.model
 import android.os.Parcelable
 import kotlinx.parcelize.Parcelize
 import kotlinx.parcelize.RawValue
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @Parcelize
 data class DataModel(
@@ -12,5 +15,10 @@ data class DataModel(
     val images: List<String>,
     val likes: Int = 0,
     val comments: Int = 0,
-    val commentList: @RawValue List<CommentModel> = emptyList()
+    val commentList: @RawValue List<CommentModel> = emptyList(),
+    val timestamp: String = getCurrentTime()
 )  : Parcelable
+fun getCurrentTime(): String {
+    val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+    return sdf.format(Date())
+}

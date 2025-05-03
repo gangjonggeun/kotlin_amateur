@@ -34,6 +34,7 @@ class CommentAdapter(
         val tvDetailContent: TextView = view.findViewById(R.id.tv_detailContent)
         val commentCountText: TextView = view.findViewById(R.id.commentCountText)
         val likeCountText: TextView = view.findViewById(R.id.likeCountText)
+        val timeStampText : TextView = view.findViewById(R.id.postTimestampText)
     }
 
     inner class CommentViewHolder(view: View) : RecyclerView.ViewHolder(view) {
@@ -67,6 +68,7 @@ class CommentAdapter(
             holder.tvDetailTitle.text = userPost.title
             holder.tvDetailContent.text = userPost.content
             holder.commentCountText.text = comments.size.toString()
+            holder.timeStampText.text = userPost.timestamp
         } else if (holder is CommentViewHolder) {
             val comment = comments[position - 1]
             holder.writerId.text = comment.commentId
