@@ -1,25 +1,21 @@
-package com.example.kotlin_amateur.util
+package com.example.kotlin_amateur.viewmodel
 
 import android.icu.text.SimpleDateFormat
 import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewModelScope
 import com.example.kotlin_amateur.model.CommentModel
-import com.example.kotlin_amateur.model.DataModel
 import com.example.kotlin_amateur.model.ReplyModel
+import com.example.kotlin_amateur.network.BackendApiService
 import kotlinx.coroutines.launch
-import okhttp3.ResponseBody
-import retrofit2.Call
-import retrofit2.Callback
-import retrofit2.Response
 import java.util.Date
 import java.util.Locale
 import java.util.UUID
+import javax.inject.Inject
 
-class LectureDetailViewModel : ViewModel() {
+class LectureDetailViewModel @Inject constructor(private val apiService: BackendApiService) : ViewModel() {
 
     private val _likeCount = MutableLiveData<Int>(0) // 초기값 0
     val likeCount: LiveData<Int> get() = _likeCount
@@ -39,7 +35,8 @@ class LectureDetailViewModel : ViewModel() {
     fun sendIncreaseLikeRequest(postId: String) {
         viewModelScope.launch {
             try {
-                val response = RetrofitClient.apiService.increaseLikes(mapOf("id" to postId))
+                val response = apiService.increaseLikes(mapOf("id" to postId))
+
                 if (response.isSuccessful) {
                     Log.d("Retrofit", "좋아요 증가 성공")
                     _likeCount.value = (_likeCount.value ?: 0) + 1
@@ -55,7 +52,7 @@ class LectureDetailViewModel : ViewModel() {
     fun sendDecreaseLikeRequest(postId: String) {
         viewModelScope.launch {
             try {
-                val response = RetrofitClient.apiService.decreaseLikes(mapOf("id" to postId))
+                val response = apiService.decreaseLikes(mapOf("id" to postId))
                 if (response.isSuccessful) {
                     Log.d("Retrofit", "좋아요 감소 성공")
                     _likeCount.value = (_likeCount.value ?: 0) - 1
@@ -71,7 +68,7 @@ class LectureDetailViewModel : ViewModel() {
     fun loadComments(postId: String) {
         viewModelScope.launch {
             try {
-                val response = RetrofitClient.apiService.getData()
+                val response = apiService.getData()
                 if (response.isSuccessful) {
                     val post = response.body()?.find { it.id == postId }
                     _comments.value = post?.commentList?.sortedByDescending { it.commentTimestamp } ?: emptyList()
@@ -92,7 +89,7 @@ class LectureDetailViewModel : ViewModel() {
                     replies = emptyList()
                 )
 
-                val response = RetrofitClient.apiService.addComment(
+                val response = apiService.addComment(
                     mapOf(
                         "postId" to postId,
                         "commentContent" to content,
@@ -119,7 +116,7 @@ class LectureDetailViewModel : ViewModel() {
                     replyTimestamp = getCurrentTime()
                 )
                 Log.d("Reply", "서버에 요청 보냄 시작")
-                val response = RetrofitClient.apiService.addReply(
+                val response = apiService.addReply(
                     mapOf(
                         "postId" to postId,
                         "commentId" to commentId,

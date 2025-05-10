@@ -1,4 +1,4 @@
-package com.example.kotlin_amateur.util
+package com.example.kotlin_amateur.adapter
 
 
 import android.view.LayoutInflater
@@ -7,8 +7,6 @@ import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.example.kotlin_amateur.R
-import com.example.kotlin_amateur.databinding.FragmentLectureDetailsBinding
-import com.example.kotlin_amateur.databinding.ItemDetailImageBinding
 
 
 // ViewPager2 Adapter

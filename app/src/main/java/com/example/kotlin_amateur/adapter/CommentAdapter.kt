@@ -1,4 +1,4 @@
-package com.example.kotlin_amateur.util
+package com.example.kotlin_amateur.adapter
 
 import android.content.Context
 import android.view.LayoutInflater

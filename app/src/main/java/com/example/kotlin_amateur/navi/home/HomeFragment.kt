@@ -1,22 +1,22 @@
 package com.example.kotlin_amateur.navi.home
 
+import android.annotation.SuppressLint
 import android.os.Bundle
-import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.RecyclerView
-import com.example.kotlin_amateur.R
-import com.example.kotlin_amateur.databinding.FragmentHomeBinding
-import android.annotation.SuppressLint
 import androidx.core.content.ContextCompat
+import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.fragment.findNavController
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+import com.example.kotlin_amateur.R
+import com.example.kotlin_amateur.adapter.HomeRecyclerViewAdapter
+import com.example.kotlin_amateur.databinding.FragmentHomeBinding
 import com.example.kotlin_amateur.model.DataModel
-import com.example.kotlin_amateur.util.HomeRecyclerViewAdapter
-import com.example.kotlin_amateur.util.HomeViewModel
+import com.example.kotlin_amateur.viewmodel.HomeViewModel
 import com.leinardi.android.speeddial.SpeedDialActionItem
 
 class HomeFragment : Fragment() {

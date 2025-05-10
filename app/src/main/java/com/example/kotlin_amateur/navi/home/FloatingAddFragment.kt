@@ -1,9 +1,6 @@
 package com.example.kotlin_amateur.navi.home
 
 
-import RetrofitClient
-import SubmitResponse
-import android.content.Context
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
@@ -14,22 +11,13 @@ import android.widget.Toast
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.viewModels
+import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.example.kotlin_amateur.adapter.FloatingAddImageAdapter
 import com.example.kotlin_amateur.databinding.FragmentFloatingAddBinding
-import com.example.kotlin_amateur.model.DataModel
-import com.example.kotlin_amateur.util.FloatingAddImageAdapter
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import okhttp3.MediaType.Companion.toMediaTypeOrNull
-import okhttp3.MultipartBody
-import okhttp3.RequestBody.Companion.asRequestBody
-import retrofit2.Call
-import retrofit2.Callback
-import retrofit2.Response
-import java.io.File
-import java.io.FileOutputStream
-import java.util.UUID
+import com.example.kotlin_amateur.state.SubmitState
+import com.example.kotlin_amateur.viewmodel.FloatingAddViewModel
 
 class FloatingAddFragment : Fragment() {
 
@@ -38,6 +26,8 @@ class FloatingAddFragment : Fragment() {
 
     private lateinit var imageAdapter: FloatingAddImageAdapter
     private val imagesUriList = mutableListOf<Uri>()
+
+    private val viewModel: FloatingAddViewModel by viewModels()
 
     // 결과 받을 런처 등록
     private val pickMultipleMediaLauncher =
@@ -78,7 +68,7 @@ class FloatingAddFragment : Fragment() {
         binding.submitBtn.setOnClickListener { submit() }
         binding.imageAddBtnLayout.setOnClickListener { addImage() }
 
-
+        observeSubmitState()
 
         return binding.root
     }
@@ -107,7 +97,8 @@ class FloatingAddFragment : Fragment() {
             ).show()
 
             else -> {
-                submitDataToServer(titleText, contentText, imagesUriList, requireContext())
+             //   submitDataToServer(titleText, contentText, imagesUriList, requireContext())
+                viewModel.submitPost(titleText, contentText, imagesUriList, requireContext())
                 Toast.makeText(requireContext(), "입력 완료!", Toast.LENGTH_SHORT).show()
                 requireActivity().onBackPressedDispatcher.onBackPressed()
             }
@@ -115,54 +106,28 @@ class FloatingAddFragment : Fragment() {
     }
 
 
-    private fun submitDataToServer(
-        title: String,
-        content: String,
-        imageUris: List<Uri>,
-        context: Context
-    ) {
-        val imageUrls = mutableListOf<String>()
-        val client = RetrofitClient.apiService
-        val contentResolver = context.contentResolver
-        val id = UUID.randomUUID().toString()
-
-        CoroutineScope(Dispatchers.IO).launch {
-            try {
-                // 이미지 업로드 (forEach 비동기 처리)
-                for (uri in imageUris) {
-                    val inputStream = contentResolver.openInputStream(uri)
-                    val file = File.createTempFile("upload", ".jpg", context.cacheDir)
-                    val outputStream = FileOutputStream(file)
-                    inputStream?.copyTo(outputStream)
-                    inputStream?.close()
-                    outputStream.close()
-
-                    val requestFile = file.asRequestBody("image/*".toMediaTypeOrNull())
-                    val body = MultipartBody.Part.createFormData("image", file.name, requestFile)
-
-                    val response = client.uploadImage(body).execute()  // 여긴 여전히 Call이라 유지 가능
-                    if (response.isSuccessful) {
-                        val url = response.body()?.image_url ?: ""
-                        imageUrls.add(url)
-                    }
+    private fun observeSubmitState() {
+        viewModel.submitState.observe(viewLifecycleOwner) { state ->
+            when (state) {
+                is SubmitState.Loading -> {
+                    // 로딩 표시
+                    binding.progressBar.visibility = View.VISIBLE
                 }
-
-                // 서버에 전체 데이터 전송
-                val dataModel =
-                    DataModel(id = id, title = title, content = content, images = imageUrls )
-                val submitResponse = client.submitData(dataModel) // ✅ suspend fun 이므로 바로 호출
-
-                if (submitResponse.isSuccessful) {
-                    Log.d("Submit", "Success")
-                } else {
-                    Log.e("Submit", "서버 응답 실패: ${submitResponse.code()}")
+                is SubmitState.Success -> {
+                    binding.progressBar.visibility = View.GONE
+                    Toast.makeText(context, "업로드 성공!", Toast.LENGTH_SHORT).show()
+                    findNavController().navigateUp()
                 }
-
-            } catch (e: Exception) {
-                Log.e("Submit", "예외 발생", e)
+                is SubmitState.Error -> {
+                    binding.progressBar.visibility = View.GONE
+                    Toast.makeText(context, "에러: ${state.exception.message}", Toast.LENGTH_SHORT).show()
+                }
+                SubmitState.Idle -> {
+                    binding.progressBar.visibility = View.GONE
+                }
             }
         }
-    } // submitData 끝
+    }
 
     private fun addImage() {
         Log.d("FloatingAddFragment", "addImage() 호출됨")

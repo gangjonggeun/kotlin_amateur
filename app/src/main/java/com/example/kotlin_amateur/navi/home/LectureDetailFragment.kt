@@ -1,7 +1,6 @@
 package com.example.kotlin_amateur.navi.home
 
 import android.os.Bundle
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -9,16 +8,16 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.viewpager2.widget.ViewPager2
 import com.example.kotlin_amateur.R
-import com.example.kotlin_amateur.model.DataModel
-import com.example.kotlin_amateur.util.CommentAdapter
-import com.example.kotlin_amateur.util.LectureDetailViewModel
-import com.example.kotlin_amateur.util.LectureDetailimageAdapter
+import com.example.kotlin_amateur.adapter.CommentAdapter
+import com.example.kotlin_amateur.adapter.LectureDetailimageAdapter
 import com.example.kotlin_amateur.databinding.FragmentLectureDetailsBinding
+import com.example.kotlin_amateur.model.DataModel
+import com.example.kotlin_amateur.viewmodel.LectureDetailViewModel
+
 class LectureDetailFragment : Fragment() {
     private var _binding: FragmentLectureDetailsBinding? = null
     private val binding get() = _binding!!

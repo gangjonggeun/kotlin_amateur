@@ -1,20 +1,16 @@
-package com.example.kotlin_amateur.util
+package com.example.kotlin_amateur.viewmodel
 
-import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.kotlin_amateur.model.DataModel
+import com.example.kotlin_amateur.network.BackendApiService
 import kotlinx.coroutines.launch
-import retrofit2.Call
-import retrofit2.Callback
-import retrofit2.Response
 
 
-class HomeViewModel() : ViewModel() {
+class HomeViewModel( private val apiService: BackendApiService) : ViewModel() {
 
     private val _dataList = MutableLiveData<List<DataModel>>()
     val dataList: LiveData<List<DataModel>> get() = _dataList
@@ -41,7 +37,7 @@ class HomeViewModel() : ViewModel() {
     fun loadDataFromServer() {
         viewModelScope.launch {
             try {
-                val response = RetrofitClient.apiService.getData()
+                val response = apiService.getData()
 
                 if (response.isSuccessful) {
                     _dataList.value = response.body() ?: emptyList()

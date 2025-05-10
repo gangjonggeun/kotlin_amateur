@@ -1,17 +1,12 @@
 package com.example.kotlin_amateur
 
-import androidx.activity.ComponentActivity
-
-
 
 import android.os.Bundle
 import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import androidx.navigation.fragment.NavHostFragment
 import androidx.navigation.ui.setupWithNavController
-import com.example.kotlin_amateur.R
 import com.example.kotlin_amateur.databinding.ActivityMainBinding
-
 
 
 class MainActivity : AppCompatActivity() {
