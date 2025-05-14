@@ -12,12 +12,12 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.kotlin_amateur.R
 import com.example.kotlin_amateur.model.CommentModel
-import com.example.kotlin_amateur.model.DataModel
+import com.example.kotlin_amateur.model.PostModel
 
 class CommentAdapter(
     private val context: Context,
     private var comments: List<CommentModel>,
-    private val userPost: DataModel,
+    private val userPost: PostModel,
     private val onReplySubmit: (String, String) -> Unit,
     private var likeCount: Int = 0
 ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {

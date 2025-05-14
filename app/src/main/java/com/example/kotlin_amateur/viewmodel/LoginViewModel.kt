@@ -4,8 +4,8 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.kotlin_amateur.model.LoginRequest
-import com.example.kotlin_amateur.network.BackendApiService
+import com.example.kotlin_amateur.remote.request.LoginRequest
+import com.example.kotlin_amateur.remote.api.BackendApiService
 import com.example.kotlin_amateur.state.LoginResult
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
@@ -27,7 +27,7 @@ class LoginViewModel @Inject constructor(
 
                 val result = when {
 
-                    !response.isSuccessful || body == null -> {
+                    (!response.isSuccessful || body == null) -> {
                         LoginResult.Failure(Exception("응답 실패 또는 body 없음"))
                     }
 
@@ -35,7 +35,8 @@ class LoginViewModel @Inject constructor(
                         val email = body.email ?: ""
                         val sub = body.googleSub ?: ""
                         val name = body.name ?: ""
-                        LoginResult.NeedNickname(email, sub, name)
+                        val accessToken = body.accessToken
+                        LoginResult.NeedNickname(email, sub, name, accessToken)
                     }
 
                     else -> {
@@ -46,6 +47,7 @@ class LoginViewModel @Inject constructor(
                 _loginResult.postValue(result)
 
             } catch (e: Exception) {
+
                 _loginResult.postValue(LoginResult.Failure(e))
             }
         }

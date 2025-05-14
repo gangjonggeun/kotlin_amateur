@@ -1,5 +1,6 @@
 package com.example.kotlin_amateur.login
 
+import android.content.Context
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
@@ -13,6 +14,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContentProviderCompat.requireContext
 import com.example.kotlin_amateur.MainActivity
 import com.example.kotlin_amateur.R
 import com.example.kotlin_amateur.databinding.ActivityLoginBinding
@@ -27,7 +29,7 @@ import com.google.android.gms.tasks.Task
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
-class LoginActivity : AppCompatActivity() {
+class LoginActivity : AppCompatActivity(), ProfileSetupBottomSheet.OnProfileSetupCompleteListener {
 
     private lateinit var binding: ActivityLoginBinding
 
@@ -64,46 +66,15 @@ class LoginActivity : AppCompatActivity() {
             startGoogleLogin()
         }
 
+        //로그인 버튼 클릭 리스너
         findViewById<Button>(R.id.loginButton).setOnClickListener {
             isSignUpMode = false
             startGoogleLogin()
         }
+
+
     }
 
-
-    private fun showNicknameDialog(email: String, id: String, name: String) {
-        val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_nickname, null)
-        val editText = dialogView.findViewById<EditText>(R.id.nicknameEditText)
-
-        val dialog = AlertDialog.Builder(this)
-            .setView(dialogView)
-            .create()
-
-        dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
-        dialog.show()
-
-        val confirmButton = dialogView.findViewById<Button>(R.id.confirmButton)
-        val cancelButton = dialogView.findViewById<Button>(R.id.cancelButton)
-
-        confirmButton.setOnClickListener {
-            val nickname = editText.text.toString().trim()
-            if (nickname.isEmpty()) {
-                editText.error = "닉네임을 입력해주세요."
-            }else if (!nicknameRegex.matches(nickname)) {
-                editText.error = "한글, 영어, 숫자만 입력 가능 (최대 10자)"
-            }
-            else {
-                // TODO: 서버 저장 or SharedPreferences 처리
-                dialog.dismiss()
-                startActivity(Intent(this, MainActivity::class.java))
-                finish()
-            }
-        }
-
-        cancelButton.setOnClickListener {
-            dialog.dismiss()
-        }
-    }
     private fun startGoogleLogin() {
         val signInIntent = googleSignInClient.signInIntent
         signInLauncher.launch(signInIntent)
@@ -123,7 +94,7 @@ class LoginActivity : AppCompatActivity() {
             val account = task.getResult(ApiException::class.java)
             val idToken = account.idToken
 
-            Log.d("🔥IDTOKEN", "idToken = ${idToken ?: "NULL!"}")
+            Log.d("IDTOKEN", "idToken = ${idToken ?: "NULL!"}")
 
             if (idToken != null) {
                 viewModel.loginWithGoogleToken(idToken)
@@ -144,11 +115,16 @@ class LoginActivity : AppCompatActivity() {
         viewModel.loginResult.observe(this) { result ->
             when (result) {
                 is LoginResult.Success -> {
-                    // 토큰 저장하고 메인으로 이동
+                    saveAccessToken(result.accessToken)
+                    startActivity(Intent(this, MainActivity::class.java))
+                    finish()
                 }
                 is LoginResult.NeedNickname -> {
-                    // 닉네임 다이얼로그 띄우기
-                    showNicknameDialog(result.email, result.googleSub, result.name)
+                    saveAccessToken(result.accessToken)
+                    Log.d("actoken","${result.accessToken}")
+                    val sheet = ProfileSetupBottomSheet()
+                    sheet.isCancelable = false
+                    sheet.show(supportFragmentManager, "ProfileSetup")
                 }
                 is LoginResult.Failure -> {
                     Toast.makeText(this, "로그인 실패: ${result.exception.message}", Toast.LENGTH_SHORT).show()
@@ -156,5 +132,16 @@ class LoginActivity : AppCompatActivity() {
             }
         }
     }
-
+    override fun onProfileSetupComplete() {
+        Log.d("LoginSucces","Login Succes")
+        val intent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        }
+        startActivity(intent)
+        finish()
+    }
+    private fun saveAccessToken(token: String) {
+        val prefs = getSharedPreferences("auth_prefs", Context.MODE_PRIVATE)
+        prefs.edit().putString("access_token", token).apply()
+    }
 }

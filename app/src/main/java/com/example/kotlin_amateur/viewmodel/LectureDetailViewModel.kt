@@ -8,13 +8,14 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.kotlin_amateur.model.CommentModel
 import com.example.kotlin_amateur.model.ReplyModel
-import com.example.kotlin_amateur.network.BackendApiService
+import com.example.kotlin_amateur.remote.api.BackendApiService
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import java.util.Date
 import java.util.Locale
 import java.util.UUID
 import javax.inject.Inject
-
+@HiltViewModel
 class LectureDetailViewModel @Inject constructor(private val apiService: BackendApiService) : ViewModel() {
 
     private val _likeCount = MutableLiveData<Int>(0) // 초기값 0

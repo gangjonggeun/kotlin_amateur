@@ -15,9 +15,11 @@ import com.example.kotlin_amateur.R
 import com.example.kotlin_amateur.adapter.CommentAdapter
 import com.example.kotlin_amateur.adapter.LectureDetailimageAdapter
 import com.example.kotlin_amateur.databinding.FragmentLectureDetailsBinding
-import com.example.kotlin_amateur.model.DataModel
+import com.example.kotlin_amateur.model.PostModel
 import com.example.kotlin_amateur.viewmodel.LectureDetailViewModel
+import dagger.hilt.android.AndroidEntryPoint
 
+@AndroidEntryPoint
 class LectureDetailFragment : Fragment() {
     private var _binding: FragmentLectureDetailsBinding? = null
     private val binding get() = _binding!!
@@ -26,7 +28,7 @@ class LectureDetailFragment : Fragment() {
     private var isLiked = false // 좋아요 상태 저장용
 
     private lateinit var postViewModel: LectureDetailViewModel
-    private lateinit var post: DataModel
+    private lateinit var post: PostModel
 
     private lateinit var commentAdapter: CommentAdapter
 

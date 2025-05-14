@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="FullScreenBottomSheetDialog" parent="Theme.Design.Light.BottomSheetDialog">
+        <item name="bottomSheetStyle">@style/FullScreenBottomSheet</item>
+    </style>
+
+    <style name="FullScreenBottomSheet" parent="Widget.Design.BottomSheet.Modal">
+        <item name="android:layout_height">match_parent</item>
+    </style>
+</resources>

@@ -11,7 +11,7 @@
     <!-- 로고 또는 앱명 -->
     <ImageView
         android:id="@+id/logoImage"
-        android:layout_width="200dp"
+        android:layout_width="250dp"
         android:layout_height="200dp"
         android:src="@drawable/ic_app_logo_trans"
         android:contentDescription="앱 로고"/>
@@ -20,20 +20,12 @@
         android:layout_height="wrap_content"
         android:text="AmateuR"
         android:gravity="center"
-        android:textSize="30sp"
-
-        android:layout_marginBottom="30dp"
+        android:textSize="40sp"
+        android:fontFamily="@font/notobold"
+        android:layout_marginBottom="180dp"
         />
 
     <!-- Google 회원가입 버튼 -->
-    <Button
-        android:id="@+id/googleSignUpButton"
-        android:layout_width="match_parent"
-        android:layout_height="48dp"
-        android:text="구글 계정으로 회원가입"
-        android:textColor="@color/white"
-        android:layout_marginBottom="16dp" />
-
     <!-- 일반 로그인 버튼 -->
     <Button
         android:id="@+id/loginButton"
@@ -41,9 +33,20 @@
         android:layout_height="48dp"
         android:text="로그인"
         android:textColor="@android:color/white"
-        android:backgroundTint="@color/black"
+        android:backgroundTint="@color/gray"
+        android:layout_marginBottom="16dp" />
 
-        android:layout_marginBottom="24dp" />
+    <Button
+        android:id="@+id/googleSignUpButton"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:text="구글 계정으로 회원가입"
+        android:textColor="@color/white"
+        android:textSize="15sp"
+        android:layout_marginBottom="16dp"
+        android:backgroundTint="@color/pastel_purple"/>
+
+
 
     <!-- 안내 텍스트 -->
     <TextView

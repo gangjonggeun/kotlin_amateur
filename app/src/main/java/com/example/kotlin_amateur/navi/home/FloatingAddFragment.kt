@@ -16,9 +16,11 @@ import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.kotlin_amateur.adapter.FloatingAddImageAdapter
 import com.example.kotlin_amateur.databinding.FragmentFloatingAddBinding
-import com.example.kotlin_amateur.state.SubmitState
+import com.example.kotlin_amateur.state.SubmitResult
 import com.example.kotlin_amateur.viewmodel.FloatingAddViewModel
+import dagger.hilt.android.AndroidEntryPoint
 
+@AndroidEntryPoint
 class FloatingAddFragment : Fragment() {
 
     private var _binding: FragmentFloatingAddBinding? = null
@@ -107,22 +109,22 @@ class FloatingAddFragment : Fragment() {
 
 
     private fun observeSubmitState() {
-        viewModel.submitState.observe(viewLifecycleOwner) { state ->
+        viewModel.submitResult.observe(viewLifecycleOwner) { state ->
             when (state) {
-                is SubmitState.Loading -> {
+                is SubmitResult.Loading -> {
                     // 로딩 표시
                     binding.progressBar.visibility = View.VISIBLE
                 }
-                is SubmitState.Success -> {
+                is SubmitResult.Success -> {
                     binding.progressBar.visibility = View.GONE
                     Toast.makeText(context, "업로드 성공!", Toast.LENGTH_SHORT).show()
                     findNavController().navigateUp()
                 }
-                is SubmitState.Error -> {
+                is SubmitResult.Error -> {
                     binding.progressBar.visibility = View.GONE
                     Toast.makeText(context, "에러: ${state.exception.message}", Toast.LENGTH_SHORT).show()
                 }
-                SubmitState.Idle -> {
+                SubmitResult.Idle -> {
                     binding.progressBar.visibility = View.GONE
                 }
             }

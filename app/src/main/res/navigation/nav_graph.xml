@@ -46,6 +46,6 @@
 
         <argument
             android:name="post"
-            app:argType="com.example.kotlin_amateur.model.DataModel" />
+            app:argType="com.example.kotlin_amateur.model.PostModel" />
     </fragment>
 </navigation>

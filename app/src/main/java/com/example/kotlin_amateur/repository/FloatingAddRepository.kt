@@ -3,9 +3,9 @@ package com.example.kotlin_amateur.repository
 
 import android.content.Context
 import android.net.Uri
-import com.example.kotlin_amateur.model.DataModel
-import com.example.kotlin_amateur.network.BackendApiService
-import com.example.kotlin_amateur.network.SubmitResponse
+import com.example.kotlin_amateur.model.PostModel
+import com.example.kotlin_amateur.remote.api.BackendApiService
+import com.example.kotlin_amateur.remote.api.SubmitResponse
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.asRequestBody
@@ -40,7 +40,7 @@ class FloatingAddRepository @Inject constructor(
         return imageUrls
     }
 
-    suspend fun submitPost(dataModel: DataModel):Response<SubmitResponse> {
-        return apiService.submitData(dataModel)
+    suspend fun submitPost(postModel: PostModel):Response<SubmitResponse> {
+        return apiService.submitData(postModel)
     }
 }

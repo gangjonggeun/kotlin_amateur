@@ -6,9 +6,9 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.kotlin_amateur.model.DataModel
+import com.example.kotlin_amateur.model.PostModel
 import com.example.kotlin_amateur.repository.FloatingAddRepository
-import com.example.kotlin_amateur.state.SubmitState
+import com.example.kotlin_amateur.state.SubmitResult
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import java.util.UUID
@@ -18,15 +18,15 @@ class FloatingAddViewModel @Inject constructor(
     private val postRepository: FloatingAddRepository
 ) : ViewModel() {
 
-    private val _submitState = MutableLiveData<SubmitState>(SubmitState.Idle)
-    val submitState: LiveData<SubmitState> get() = _submitState
+    private val _submitResult = MutableLiveData<SubmitResult>(SubmitResult.Idle)
+    val submitResult: LiveData<SubmitResult> get() = _submitResult
 
     fun submitPost(title: String, content: String, imageUris: List<Uri>, context: Context) {
         viewModelScope.launch {
-            _submitState.value = SubmitState.Loading
+            _submitResult.value = SubmitResult.Loading
             try {
                 val imageUrls = postRepository.uploadImages(imageUris, context)
-                val dataModel = DataModel(
+                val dataModel = PostModel(
                     id = UUID.randomUUID().toString(),
                     title = title,
                     content = content,
@@ -34,12 +34,12 @@ class FloatingAddViewModel @Inject constructor(
                 )
                 val response = postRepository.submitPost(dataModel)
                 if (response.isSuccessful) {
-                    _submitState.value = SubmitState.Success
+                    _submitResult.value = SubmitResult.Success
                 } else {
-                    _submitState.value = SubmitState.Error(Exception("서버 응답 실패"))
+                    _submitResult.value = SubmitResult.Error(Exception("서버 응답 실패"))
                 }
             } catch (e: Exception) {
-                _submitState.value = SubmitState.Error(e)
+                _submitResult.value = SubmitResult.Error(e)
             }
         }
     }

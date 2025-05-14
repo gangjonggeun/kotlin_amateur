@@ -15,10 +15,12 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.example.kotlin_amateur.R
 import com.example.kotlin_amateur.adapter.HomeRecyclerViewAdapter
 import com.example.kotlin_amateur.databinding.FragmentHomeBinding
-import com.example.kotlin_amateur.model.DataModel
+import com.example.kotlin_amateur.model.PostModel
 import com.example.kotlin_amateur.viewmodel.HomeViewModel
 import com.leinardi.android.speeddial.SpeedDialActionItem
+import dagger.hilt.android.AndroidEntryPoint
 
+@AndroidEntryPoint
 class HomeFragment : Fragment() {
     private var isFabOpen = false // FAB이 열려있는 상태인지 체크
 
@@ -57,7 +59,7 @@ class HomeFragment : Fragment() {
 
         viewModel.dataList.observe(viewLifecycleOwner) { newList ->
             val recyclerList = newList.map {
-                DataModel(
+                PostModel(
                     id = it.id,
                     images = it.images, // 이미지 URL (String)
                     title = it.title,

@@ -5,15 +5,17 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.kotlin_amateur.model.DataModel
-import com.example.kotlin_amateur.network.BackendApiService
+import com.example.kotlin_amateur.model.PostModel
+import com.example.kotlin_amateur.remote.api.BackendApiService
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
+@HiltViewModel
+class HomeViewModel @Inject constructor(private val apiService: BackendApiService) : ViewModel() {
 
-class HomeViewModel( private val apiService: BackendApiService) : ViewModel() {
-
-    private val _dataList = MutableLiveData<List<DataModel>>()
-    val dataList: LiveData<List<DataModel>> get() = _dataList
+    private val _dataList = MutableLiveData<List<PostModel>>()
+    val dataList: LiveData<List<PostModel>> get() = _dataList
 
     init {
         // loadDummyData()

@@ -9,7 +9,7 @@ import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.example.kotlin_amateur.R
-import com.example.kotlin_amateur.model.DataModel
+import com.example.kotlin_amateur.model.PostModel
 import java.net.URLDecoder
 
 //class RecyclerViewData(
@@ -28,7 +28,7 @@ class HomeRecyclerViewHolder(view: View) : RecyclerView.ViewHolder(view) {
     val tv_conmment: TextView = view.findViewById(R.id.commment_count_tv)
 }
 
-class HomeRecyclerViewAdapter(private var dataList: List<DataModel>,  private val onItemClick: (DataModel) -> Unit) :
+class HomeRecyclerViewAdapter(private var dataList: List<PostModel>, private val onItemClick: (PostModel) -> Unit) :
     RecyclerView.Adapter<HomeRecyclerViewHolder>() {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): HomeRecyclerViewHolder {
@@ -68,7 +68,7 @@ class HomeRecyclerViewAdapter(private var dataList: List<DataModel>,  private va
     }
 
     // 외부에서 데이터 갱신할 때 사용
-    fun updateList(newList: List<DataModel>) {
+    fun updateList(newList: List<PostModel>) {
         dataList = newList
         notifyDataSetChanged()
     }
