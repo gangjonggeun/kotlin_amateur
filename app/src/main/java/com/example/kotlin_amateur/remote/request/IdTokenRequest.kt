@@ -1,6 +1,6 @@
 package com.example.kotlin_amateur.remote.request
 
-data class LoginRequest(
+data class IdTokenRequest(
     val idToken: String
 )
 

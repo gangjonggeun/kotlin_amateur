@@ -1,4 +1,4 @@
-package com.example.kotlin_amateur.navi.home
+package com.example.kotlin_amateur.post
 
 import android.os.Bundle
 import android.view.LayoutInflater

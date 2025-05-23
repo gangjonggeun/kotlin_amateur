@@ -1,5 +1,6 @@
 package com.example.kotlin_amateur.repository
 
+import android.util.Log
 import com.example.kotlin_amateur.remote.api.BackendApiService
 import com.example.kotlin_amateur.remote.request.SetupProfileRequest
 import javax.inject.Inject

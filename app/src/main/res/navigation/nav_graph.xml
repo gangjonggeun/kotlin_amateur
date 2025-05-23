@@ -31,7 +31,7 @@
 
     <fragment
         android:id="@+id/addPostFragment"
-        android:name="com.example.kotlin_amateur.navi.home.FloatingAddFragment"
+        android:name="com.example.kotlin_amateur.post.FloatingAddFragment"
         android:label="글 추가" />
 
     <fragment
@@ -41,7 +41,7 @@
     <!-- 🔥 새로 추가한 상세보기 프래그먼트 -->
     <fragment
         android:id="@+id/LectureDetailFragment"
-        android:name="com.example.kotlin_amateur.navi.home.LectureDetailFragment"
+        android:name="com.example.kotlin_amateur.post.LectureDetailFragment"
         android:label="게시글 상세보기" >
 
         <argument

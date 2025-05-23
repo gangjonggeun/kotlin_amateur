@@ -6,18 +6,12 @@ import kotlinx.parcelize.Parcelize
 @Parcelize
 data class PostResponse(
 
-    val id: String,
-
-    val title: String,
-    val content: String,
-
-
-    val images: List<String>,
-
-    val likes: Int = 0,
-    val comments: Int = 0,
-
-    val commentList: List<CommentResponse> = emptyList(),
-
-    val timestamp: String
+    val postId: String,
+    val postTitle: String,
+    val postContent: String,
+    val nickname: String,
+    val imageUrls: List<String>,
+    val likes: Int,
+    val comments: Int,
+    val timeStamp: String
 ) :Parcelable

@@ -68,7 +68,6 @@ class CommentAdapter(
             holder.tvDetailTitle.text = userPost.title
             holder.tvDetailContent.text = userPost.content
             holder.commentCountText.text = comments.size.toString()
-            holder.timeStampText.text = userPost.timestamp
         } else if (holder is CommentViewHolder) {
             val comment = comments[position - 1]
             holder.writerId.text = comment.commentId

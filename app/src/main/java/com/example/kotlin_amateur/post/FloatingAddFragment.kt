@@ -1,4 +1,4 @@
-package com.example.kotlin_amateur.navi.home
+package com.example.kotlin_amateur.post
 
 
 import android.net.Uri
@@ -99,10 +99,15 @@ class FloatingAddFragment : Fragment() {
             ).show()
 
             else -> {
-             //   submitDataToServer(titleText, contentText, imagesUriList, requireContext())
-                viewModel.submitPost(titleText, contentText, imagesUriList, requireContext())
+                //imagesUriList
+                viewModel.title.value = titleText
+                viewModel.content.value = contentText
+                viewModel.imageUriList.value = imagesUriList
+
+                Log.d("post data","$viewModel.title.value $viewModel.content.value $viewModel.imageUriList.value")
+                viewModel.submitPost()
                 Toast.makeText(requireContext(), "입력 완료!", Toast.LENGTH_SHORT).show()
-                requireActivity().onBackPressedDispatcher.onBackPressed()
+
             }
         }
     }
@@ -118,9 +123,10 @@ class FloatingAddFragment : Fragment() {
                 is SubmitResult.Success -> {
                     binding.progressBar.visibility = View.GONE
                     Toast.makeText(context, "업로드 성공!", Toast.LENGTH_SHORT).show()
-                    findNavController().navigateUp()
+//                    findNavController().navigateUp()
+                    requireActivity().onBackPressedDispatcher.onBackPressed()
                 }
-                is SubmitResult.Error -> {
+                is SubmitResult.Failure -> {
                     binding.progressBar.visibility = View.GONE
                     Toast.makeText(context, "에러: ${state.exception.message}", Toast.LENGTH_SHORT).show()
                 }
@@ -132,7 +138,6 @@ class FloatingAddFragment : Fragment() {
     }
 
     private fun addImage() {
-        Log.d("FloatingAddFragment", "addImage() 호출됨")
 
         if (imagesUriList.size >= 6) {
             Toast.makeText(requireContext(), "이미지는 최대 6장까지 선택할 수 있어요.", Toast.LENGTH_SHORT).show()

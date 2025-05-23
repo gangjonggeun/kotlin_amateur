@@ -1,23 +1,22 @@
 package com.example.kotlin_amateur.login
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
-import android.graphics.Color
-import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
 import android.util.Log
-import android.view.LayoutInflater
 import android.widget.Button
-import android.widget.EditText
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.ContentProviderCompat.requireContext
+import androidx.lifecycle.lifecycleScope
 import com.example.kotlin_amateur.MainActivity
 import com.example.kotlin_amateur.R
+import com.example.kotlin_amateur.core.auth.TokenStore
 import com.example.kotlin_amateur.databinding.ActivityLoginBinding
+import com.example.kotlin_amateur.remote.response.LoginResponse
 import com.example.kotlin_amateur.state.LoginResult
 import com.example.kotlin_amateur.viewmodel.LoginViewModel
 import com.google.android.gms.auth.api.signin.GoogleSignIn
@@ -27,6 +26,7 @@ import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.tasks.Task
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
 class LoginActivity : AppCompatActivity(), ProfileSetupBottomSheet.OnProfileSetupCompleteListener {
@@ -34,10 +34,10 @@ class LoginActivity : AppCompatActivity(), ProfileSetupBottomSheet.OnProfileSetu
     private lateinit var binding: ActivityLoginBinding
 
     private lateinit var googleSignInClient: GoogleSignInClient
-    private var isSignUpMode = false
-    private val nicknameRegex = Regex("^[a-zA-Z0-9가-힣]{1,10}$")
 
     private val viewModel: LoginViewModel by viewModels()
+
+    private var isLogin :Boolean = false
 
     private val signInLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -62,13 +62,13 @@ class LoginActivity : AppCompatActivity(), ProfileSetupBottomSheet.OnProfileSetu
         
         //구글 회원가입 버튼 클릭 리스너
         findViewById<Button>(R.id.googleSignUpButton).setOnClickListener {
-            isSignUpMode = true
+            isLogin = false
             startGoogleLogin()
         }
 
         //로그인 버튼 클릭 리스너
         findViewById<Button>(R.id.loginButton).setOnClickListener {
-            isSignUpMode = false
+            isLogin = true
             startGoogleLogin()
         }
 
@@ -89,21 +89,25 @@ class LoginActivity : AppCompatActivity(), ProfileSetupBottomSheet.OnProfileSetu
      *
      * @param task Google 로그인 결과를 담고 있는 Task 객체
      */
+
     private fun handleSignInResult(task: Task<GoogleSignInAccount>) {
         try {
             val account = task.getResult(ApiException::class.java)
             val idToken = account.idToken
+            val email = account.email
 
-            Log.d("IDTOKEN", "idToken = ${idToken ?: "NULL!"}")
+            Log.d("GoogleLogin", "✅ idToken: $idToken")
 
-            if (idToken != null) {
-                viewModel.loginWithGoogleToken(idToken)
+            if (idToken != null && email != null) {
+                val isTestAccount = (email == "whdrms185900@gmail.com") // ✅ 테스트 계정 체크
+                viewModel.loginWithGoogleToken(idToken, isTestAccount, isLogin)
             } else {
-                Toast.makeText(this, "ID Token 없음", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "ID Token 또는 이메일 없음", Toast.LENGTH_SHORT).show()
             }
 
         } catch (e: ApiException) {
             Toast.makeText(this, "구글 로그인 실패: ${e.statusCode}", Toast.LENGTH_SHORT).show()
+
         }
     }
 
@@ -115,23 +119,60 @@ class LoginActivity : AppCompatActivity(), ProfileSetupBottomSheet.OnProfileSetu
         viewModel.loginResult.observe(this) { result ->
             when (result) {
                 is LoginResult.Success -> {
-                    saveAccessToken(result.accessToken)
-                    startActivity(Intent(this, MainActivity::class.java))
-                    finish()
+                    lifecycleScope.launch {
+                        TokenStore.saveTokens(applicationContext, result.accessToken, result.refreshToken)
+                        startActivity(Intent(this@LoginActivity, MainActivity::class.java))
+                        finish()
+                    }
                 }
                 is LoginResult.NeedNickname -> {
-                    saveAccessToken(result.accessToken)
-                    Log.d("actoken","${result.accessToken}")
-                    val sheet = ProfileSetupBottomSheet()
-                    sheet.isCancelable = false
-                    sheet.show(supportFragmentManager, "ProfileSetup")
+                    lifecycleScope.launch {
+                        TokenStore.saveTokens(applicationContext, result.accessToken, result.refreshToken)
+                        Log.d("actoken","${result.accessToken}")
+                        val sheet = ProfileSetupBottomSheet()
+                        sheet.isCancelable = false
+                        sheet.show(supportFragmentManager, "ProfileSetup")
+                    }
                 }
                 is LoginResult.Failure -> {
                     Toast.makeText(this, "로그인 실패: ${result.exception.message}", Toast.LENGTH_SHORT).show()
+                    Log.e("LoginActivity", "Login failure ${result.exception.message}")
+                }
+                is LoginResult.SelectUser ->{
+                    // 테스트 계정 유저 리스트 다이얼로그 등으로 선택하게 만들기
+                    showUserSelectionDialog(result.testUsers)
                 }
             }
         }
     }
+    /**
+     * 테스트 유저 계정 정보들 보여줄 다이얼로그
+     * */
+    fun showUserSelectionDialog(users: List<LoginResponse>) {
+        val nicknames = users.map { it.nickname ?: "익명" }.toTypedArray()
+
+        AlertDialog.Builder(this)
+            .setTitle("사용할 계정을 선택하세요")
+            .setItems(nicknames) { _, index ->
+                val selected = users[index]
+                lifecycleScope.launch {
+                    TokenStore.saveTokens(
+                        context = applicationContext,
+                        access = selected.accessToken,
+                        refresh = selected.refreshToken
+                    )
+                    startActivity(Intent(this@LoginActivity, MainActivity::class.java))
+                    finish()
+                }
+            }
+            .setCancelable(false)
+            .show()
+    }
+    
+    /**
+     * 로그인 및 회원 가입 성공시 메인액티비티로 이동할 콜백 함수 
+     * (중간 단계 프래그먼트에서 이동 시 액티비티 꼬일까봐)
+     * */
     override fun onProfileSetupComplete() {
         Log.d("LoginSucces","Login Succes")
         val intent = Intent(this, MainActivity::class.java).apply {
@@ -140,8 +181,8 @@ class LoginActivity : AppCompatActivity(), ProfileSetupBottomSheet.OnProfileSetu
         startActivity(intent)
         finish()
     }
-    private fun saveAccessToken(token: String) {
-        val prefs = getSharedPreferences("auth_prefs", Context.MODE_PRIVATE)
-        prefs.edit().putString("access_token", token).apply()
-    }
+    /**
+     * 토큰 저장
+     * */
+
 }

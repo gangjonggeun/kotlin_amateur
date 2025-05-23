@@ -60,6 +60,9 @@ android {
 }
 
 dependencies {
+    //Jetpack DataStore + AES256 암호화 액세스 및 리프레시 저장 +키스토어
+    implementation("androidx.datastore:datastore-preferences:1.0.0")
+    implementation("androidx.security:security-crypto:1.1.0-alpha06")
     // ✅ Hilt
     implementation("com.google.dagger:hilt-android:2.48")
     kapt("com.google.dagger:hilt-compiler:2.48")

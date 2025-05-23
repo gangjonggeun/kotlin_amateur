@@ -7,4 +7,8 @@
     <style name="FullScreenBottomSheet" parent="Widget.Design.BottomSheet.Modal">
         <item name="android:layout_height">match_parent</item>
     </style>
+
+    <style name="BottomNavText" parent="TextAppearance.Material3.LabelSmall">
+        <item name="android:textSize">10sp</item>
+    </style>
 </resources>

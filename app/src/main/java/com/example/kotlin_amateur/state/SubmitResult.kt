@@ -4,6 +4,6 @@ sealed class SubmitResult {
     object Idle : SubmitResult()
     object Loading : SubmitResult()
     object Success : SubmitResult()
-    data class Error(val exception: Throwable) : SubmitResult()
+    data class Failure(val exception: Throwable) : SubmitResult()
 }
 

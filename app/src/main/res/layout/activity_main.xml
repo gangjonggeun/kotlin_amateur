@@ -4,7 +4,6 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
     tools:context=".MainActivity">
 
     <androidx.fragment.app.FragmentContainerView
@@ -12,10 +11,10 @@
         android:name="androidx.navigation.fragment.NavHostFragment"
         android:layout_width="match_parent"
         android:layout_height="0dp"
+        app:defaultNavHost="true"
+        app:layout_constraintBottom_toTopOf="@id/separator_line"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintBottom_toTopOf="@id/navigationView"
-        app:navGraph="@navigation/nav_graph"
-        app:defaultNavHost="true" />
+        app:navGraph="@navigation/nav_graph" />
 
     <View
         android:id="@+id/separator_line"
@@ -25,23 +24,17 @@
         app:layout_constraintBottom_toTopOf="@id/navigationView"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent" />
-    <!--black -->
+
     <com.google.android.material.bottomnavigation.BottomNavigationView
         android:id="@+id/navigationView"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_weight="1"
-
-
-        app:itemIconTint="#2196F3"
-        app:itemTextColor="@color/black"
-
-        app:labelVisibilityMode="labeled"
+        android:layout_height="58dp"
+        android:background="@color/white"
+        app:itemIconSize="20dp"
+        app:itemIconTint="@color/bottom_nav_selector"
+        app:itemTextColor="@color/bottom_nav_selector"
+        app:labelVisibilityMode="unlabeled"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:menu="@menu/bottom_navigation_menu"
-        tools:ignore="MissingConstraints" />
 
-
-
-
+        app:menu="@menu/bottom_navigation_menu" />
 </androidx.constraintlayout.widget.ConstraintLayout>
