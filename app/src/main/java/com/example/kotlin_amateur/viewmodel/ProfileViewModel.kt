@@ -7,10 +7,10 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.kotlin_amateur.core.auth.TokenStore
-import com.example.kotlin_amateur.remote.request.SetupProfileRequest
 import com.example.kotlin_amateur.repository.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
+import okhttp3.MultipartBody
 import javax.inject.Inject
 @HiltViewModel
 class ProfileViewModel @Inject constructor(
@@ -21,7 +21,7 @@ class ProfileViewModel @Inject constructor(
     private val _updateSuccess = MutableLiveData<Boolean>()
     val updateSuccess: LiveData<Boolean> = _updateSuccess
 
-    fun setupProfile(nickname: String, profileImageUrl: String) {
+    fun setupProfile(nickname: String, imagePart: MultipartBody.Part?) {
         viewModelScope.launch {
             try {
                 val accessToken = TokenStore.getAccessToken(application.applicationContext)
@@ -32,11 +32,11 @@ class ProfileViewModel @Inject constructor(
 
                 Log.d("Acces Token: ProfileViewmodel","$accessToken")
 
-                val request = SetupProfileRequest(nickname, profileImageUrl)
-                userRepository.setupProfile(accessToken, request)
+                userRepository.setupProfile(accessToken, nickname, imagePart)
 
                 _updateSuccess.value = true
             } catch (e: Exception) {
+                Log.e("🔥 ProfileViewModel", "업데이트 실패", e)
                 _updateSuccess.value = false
             }
         }

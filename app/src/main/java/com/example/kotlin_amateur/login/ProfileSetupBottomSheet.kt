@@ -2,6 +2,7 @@ package com.example.kotlin_amateur.login
 
 import android.content.Context
 import android.content.DialogInterface
+import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
@@ -9,7 +10,9 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.EditText
+import android.widget.ImageView
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
 import com.example.kotlin_amateur.R
@@ -18,11 +21,22 @@ import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import androidx.appcompat.app.AlertDialog
+import com.example.kotlin_amateur.core.util.toMultipart
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
 
 @AndroidEntryPoint
 class ProfileSetupBottomSheet : BottomSheetDialogFragment() {
 
     private var shouldNavigate = false
+    private var selectedImageUri: Uri? = null
+
+    private val imagePickerLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+        uri?.let {
+            selectedImageUri = it
+            view?.findViewById<ImageView>(R.id.profileImage)?.setImageURI(it)
+        }
+    }
 
     interface OnProfileSetupCompleteListener {
         fun onProfileSetupComplete()
@@ -63,6 +77,10 @@ class ProfileSetupBottomSheet : BottomSheetDialogFragment() {
         confirmBtn.setOnClickListener {
             setupProfile()
         }
+        val profileImageView = view.findViewById<ImageView>(R.id.profileImage)
+        profileImageView.setOnClickListener {
+            imagePickerLauncher.launch("image/*")
+        }
 
         viewModel.updateSuccess.observe(viewLifecycleOwner) { success ->
             Log.d("✅ observe", "result: $success")
@@ -97,8 +115,9 @@ class ProfileSetupBottomSheet : BottomSheetDialogFragment() {
             return
         }
 
-        val profileImageUrl = "" // TODO: 이미지 연동 시 사용
-        viewModel.setupProfile(rawNickname, profileImageUrl)
+
+        val imagePart =  selectedImageUri?.toMultipart(requireContext(), "profileImage")
+        viewModel.setupProfile(rawNickname, imagePart)
     }
 
     private fun showNicknameWarningDialog(nicknameInput: EditText) {

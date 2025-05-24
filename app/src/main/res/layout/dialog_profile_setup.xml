@@ -14,6 +14,8 @@
         android:layout_gravity="center"
         android:layout_marginTop="32dp"
         android:layout_marginBottom="48dp"
+        android:clickable="true"
+        android:focusable="true"
         android:scaleType="centerCrop"
         android:src="@drawable/ic_profile"
         app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Large" />
