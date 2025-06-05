@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    <!-- 시계 원 테두리 -->
+    <path
+        android:pathData="M12,3a9,9 0,1 1 0,18a9,9 0,0 1 0,-18z"
+        android:strokeColor="#000000"
+        android:strokeWidth="1.5"
+        android:fillColor="@android:color/transparent" />
+
+    <!-- 시침 (3시 방향) -->
+    <path
+        android:pathData="M12,12h3"
+        android:strokeColor="#000000"
+        android:strokeWidth="1.5"
+        android:strokeLineCap="round" />
+
+    <!-- 분침 (정중앙에서 바깥 위 방향) -->
+    <path
+        android:pathData="M12,12v-4"
+        android:strokeColor="#000000"
+        android:strokeWidth="1.5"
+        android:strokeLineCap="round" />
+
+</vector>

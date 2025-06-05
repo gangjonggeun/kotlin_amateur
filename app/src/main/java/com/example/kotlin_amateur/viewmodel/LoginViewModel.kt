@@ -20,55 +20,75 @@ class LoginViewModel @Inject constructor(
     private val _loginResult = MutableLiveData<LoginResult>()
     val loginResult: LiveData<LoginResult> get() = _loginResult
 
-    fun loginWithGoogleToken(idToken: String, isTestAccount: Boolean, isLogin: Boolean) {
+    fun loginWithGoogleToken(idToken: String) {
         viewModelScope.launch {
             try {
-                if (isTestAccount && isLogin) {
-                    handleTestLogin(idToken)
-                } else {
-                    handleLoginOrRegister(idToken)
-                }
-            } catch (e: Exception) {
+                val response = apiService.loginWithGoogle(IdTokenRequest(idToken))
+                val body = response.body()
 
-                Log.e("Login","${e.printStackTrace()}")
+                val result = when {
+                    !response.isSuccessful || body == null -> {
+                        LoginResult.Failure(Exception("로그인 실패 또는 응답 없음"))
+                    }
+                    body.nickname.isNullOrBlank() -> {
+                        LoginResult.NeedNickname(
+                            email = body.email.orEmpty(),
+                            googleSub = body.googleSub.orEmpty(),
+                            name = body.name.orEmpty(),
+                            accessToken = body.accessToken,
+                            refreshToken = body.refreshToken
+                        )
+                    }
+                    else -> {
+                        LoginResult.Success(
+                            accessToken = body.accessToken,
+                            refreshToken = body.refreshToken
+                        )
+                    }
+                }
+
+                _loginResult.postValue(result)
+
+            } catch (e: Exception) {
+                Log.e("Login", "예외 발생", e)
                 _loginResult.postValue(LoginResult.Failure(e))
             }
         }
     }
 
-    private suspend fun handleLoginOrRegister(idToken: String) {
-        val response = apiService.loginOrRegisterWithGoogle(IdTokenRequest(idToken))
-        val body = response.body()
+    fun registerWithGoogleToken(idToken: String) {
+        viewModelScope.launch {
+            try {
+                val response = apiService.registerWithGoogle(IdTokenRequest(idToken))
+                val body = response.body()
 
-        val result = when {
-            !response.isSuccessful || body == null -> {
-                LoginResult.Failure(Exception("응답 실패 또는 body 없음"))
+                val result = when {
+                    !response.isSuccessful || body == null -> {
+                        LoginResult.Failure(Exception("회원가입 실패 또는 응답 없음"))
+                    }
+                    body.nickname.isNullOrBlank() -> {
+                        LoginResult.NeedNickname(
+                            email = body.email.orEmpty(),
+                            googleSub = body.googleSub.orEmpty(),
+                            name = body.name.orEmpty(),
+                            accessToken = body.accessToken,
+                            refreshToken = body.refreshToken
+                        )
+                    }
+                    else -> {
+                        LoginResult.Success(
+                            accessToken = body.accessToken,
+                            refreshToken = body.refreshToken
+                        )
+                    }
+                }
+
+                _loginResult.postValue(result)
+
+            } catch (e: Exception) {
+                Log.e("Register", "예외 발생", e)
+                _loginResult.postValue(LoginResult.Failure(e))
             }
-
-            body.nickname.isNullOrBlank() -> {
-                LoginResult.NeedNickname(
-                    email = body.email.orEmpty(),
-                    googleSub = body.googleSub.orEmpty(),
-                    name = body.name.orEmpty(),
-                    accessToken = body.accessToken,
-                    refreshToken = body.refreshToken
-                )
-            }
-
-            else -> LoginResult.Success(body.accessToken, refreshToken = body.refreshToken)
-        }
-
-        _loginResult.postValue(result)
-    }
-
-    private suspend fun handleTestLogin(idToken: String) {
-        val response = apiService.getTestUserList(IdTokenRequest(idToken))
-        val body = response.body()
-
-        if (response.isSuccessful && body != null) {
-            _loginResult.postValue(LoginResult.SelectUser(body)) // ✅ 그대로 넘기기
-        } else {
-            _loginResult.postValue(LoginResult.Failure(Exception("테스트 계정 불러오기 실패")))
         }
     }
 }

@@ -88,7 +88,13 @@ class ProfileSetupBottomSheet : BottomSheetDialogFragment() {
                 shouldNavigate = true
                 dismiss()
             } else {
-                Toast.makeText(requireContext(), "프로필 설정 실패", Toast.LENGTH_SHORT).show()
+//                Toast.makeText(requireContext(), "프로필 설정 실패", Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        viewModel.errorMessage.observe(viewLifecycleOwner) { message ->
+            message?.let {
+                Toast.makeText(requireContext(), it, Toast.LENGTH_SHORT).show()
             }
         }
     }

@@ -4,10 +4,6 @@ import org.jetbrains.annotations.Blocking
 import java.util.UUID
 
 
-/**
- * 유저들
- *
- * */
 data class LoginResponse(
     val email: String?,
     val googleSub: String?,
@@ -16,6 +12,7 @@ data class LoginResponse(
     val profileImageUrl: String?,
     val accessToken: String,
     val refreshToken: String,
+    val isNewUser: Boolean,
     var message :String?
 )
 

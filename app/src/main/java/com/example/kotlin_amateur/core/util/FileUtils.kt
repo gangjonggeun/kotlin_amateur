@@ -10,7 +10,7 @@ import java.io.FileOutputStream
 
 fun Uri.toMultipart(
     context: Context,
-    fieldName: String = "file" // 기본값 지정
+    fieldName: String = "images" // 기본값 지정
 ): MultipartBody.Part? {
     return try {
         val contentResolver = context.contentResolver

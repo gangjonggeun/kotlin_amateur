@@ -12,6 +12,5 @@ sealed class LoginResult {
         val refreshToken: String
     ) : LoginResult()
 
-    data class SelectUser(val testUsers: List<LoginResponse>) : LoginResult()
     data class Failure(val exception: Exception) : LoginResult()
 }

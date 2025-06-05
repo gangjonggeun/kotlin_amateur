@@ -17,7 +17,7 @@
         android:clickable="true"
         android:focusable="true"
         android:scaleType="centerCrop"
-        android:src="@drawable/ic_profile"
+        android:src="@drawable/ic_default_profile"
         app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Large" />
 
     <TextView

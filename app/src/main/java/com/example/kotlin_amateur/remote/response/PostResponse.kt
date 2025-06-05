@@ -11,7 +11,7 @@ data class PostResponse(
     val postContent: String,
     val nickname: String,
     val imageUrls: List<String>,
-    val likes: Int,
-    val comments: Int,
+//    val likes: Int,
+//    val comments: Int,
     val timeStamp: String
 ) :Parcelable

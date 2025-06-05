@@ -58,13 +58,23 @@ android {
         jvmToolchain(17) // ✅ Kotlin 2.1과 Compose 1.6 이상에 필수
     }
 }
-
 dependencies {
+
+    // 🗺️ 카카오 지도 SDK (추가)
+    implementation("com.kakao.maps.open:android:2.12.8")
+
+    // 위치 권한 (필요시)
+    implementation ("com.google.android.gms:play-services-location:21.0.1")
+
+
     //Jetpack DataStore + AES256 암호화 액세스 및 리프레시 저장 +키스토어
     implementation("androidx.datastore:datastore-preferences:1.0.0")
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
+
     // ✅ Hilt
     implementation("com.google.dagger:hilt-android:2.48")
+    implementation(libs.androidx.runtime.livedata)
+    implementation(libs.play.services.maps)
     kapt("com.google.dagger:hilt-compiler:2.48")
     implementation("androidx.hilt:hilt-navigation-fragment:1.1.0")
     kapt("androidx.hilt:hilt-compiler:1.1.0")
@@ -90,15 +100,20 @@ dependencies {
     // ✅ Navigation
     implementation("androidx.navigation:navigation-fragment-ktx:2.8.3")
     implementation("androidx.navigation:navigation-ui-ktx:2.8.3")
+    implementation("androidx.navigation:navigation-compose:2.8.3")  // ✨ 추가
 
-    // ✅ 네트워크
+    // ✅ 네트워크 (업데이트 필요)
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
     implementation("com.squareup.retrofit2:converter-gson:2.9.0")
-    implementation("com.squareup.okhttp3:okhttp:4.9.0")
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")  // ✨ 업데이트
+    implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")  // ✨ 추가
+
+
 
     // ✅ 이미지
     implementation("com.github.bumptech.glide:glide:4.16.0")
     kapt("com.github.bumptech.glide:compiler:4.16.0")
+    implementation("io.coil-kt:coil-compose:2.5.0")  // ✨ 업데이트
 
     // ✅ 기타
     implementation("com.leinardi.android:speed-dial:3.3.0")
@@ -108,16 +123,24 @@ dependencies {
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")
 
-    // ✅ Compose
+    // ✅ Compose + Hilt (업데이트)
+    implementation("androidx.hilt:hilt-navigation-compose:1.1.0")
     implementation("androidx.activity:activity-compose:1.8.2")
-    implementation(platform("androidx.compose:compose-bom:2023.10.01"))
+    implementation(platform("androidx.compose:compose-bom:2024.04.01"))  // ✨ 업데이트
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.compose.material3:material3")
 
+    // ✨ 중요: 누락된 Lifecycle Compose 의존성들 추가
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.6")
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.6")
+
+    // ✨ Foundation 추가 (Pager용)
+    implementation("androidx.compose.foundation:foundation")
+
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
 
-    androidTestImplementation("androidx.compose.ui:ui-test-junit4:1.5.3")
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
 }

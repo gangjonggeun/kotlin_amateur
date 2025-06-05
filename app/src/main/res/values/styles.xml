@@ -11,4 +11,27 @@
     <style name="BottomNavText" parent="TextAppearance.Material3.LabelSmall">
         <item name="android:textSize">10sp</item>
     </style>
+
+    <style name="RightSheetAnimation">
+        <item name="android:windowEnterAnimation">@anim/slide_in_right</item>
+        <item name="android:windowExitAnimation">@anim/slide_out_right</item>
+    </style>
+
+    <style name="RightSheetDialogTheme" parent="Theme.Material3.Light.Dialog">
+        <item name="android:statusBarColor">#FFFFFF</item> <!-- 상태바 하얀색 -->
+        <item name="android:windowLightStatusBar">true</item> <!-- 상태바 아이콘 어둡게 -->
+        <item name="android:windowBackground">@android:color/transparent</item> <!-- 배경 투명 -->
+    </style>
+
+    <!-- 원형 이미지뷰 스타일 -->
+    <style name="CircleImageView">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">50%</item>
+    </style>
+
+    <!-- 둥근 모서리 이미지뷰 스타일 -->
+    <style name="RoundedImageView">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">12dp</item>
+    </style>
 </resources>

@@ -4,7 +4,15 @@
 
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
+    <!-- ✅ 필수: 네트워크 상태 확인 권한 -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- ✅ 선택: WiFi 상태 확인 권한 -->
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+
+    <!-- 📍 위치 권한 (선택사항) -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 
     <application
         android:name=".MyApplication"
@@ -18,7 +26,15 @@
         android:roundIcon="@drawable/ic_app_logo_trans"
         android:supportsRtl="true"
         android:theme="@style/Theme.Kotlin_amateur"
-        tools:targetApi="31">
+        tools:targetApi="31"
+
+        android:usesCleartextTraffic="true"
+        >   <!-- ndroid:usesCleartextTraffic="true" 개발용 후에 삭제-->
+
+        <meta-data
+            android:name="com.kakao.vectormap.APP_KEY"
+            android:value="35b1fe4c1b1ac26786fac46a9dd60588" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true"

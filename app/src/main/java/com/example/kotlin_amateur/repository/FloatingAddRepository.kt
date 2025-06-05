@@ -5,6 +5,7 @@ import android.content.Context
 import android.net.Uri
 import com.example.kotlin_amateur.remote.api.PostApiService
 import com.example.kotlin_amateur.remote.request.PostRequest
+import com.example.kotlin_amateur.remote.response.ImageUploadResponse
 import com.example.kotlin_amateur.remote.response.PostResponse
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
@@ -19,13 +20,9 @@ class FloatingAddRepository @Inject constructor(
     suspend fun uploadPost(accessToken: String, request: PostRequest): Response<PostResponse> {
         return apiService.uploadPost("Bearer $accessToken", request)
     }
-    suspend fun uploadImages(accessToken: String, parts: List<MultipartBody.Part>): List<String> {
-        val response = apiService.uploadImages("Bearer $accessToken", parts)
-        if (response.isSuccessful) {
-            return response.body() ?: emptyList()
-        } else {
-            throw Exception("이미지 업로드 실패: ${response.code()}")
-        }
+    suspend fun uploadImages(accessToken: String, parts: List<MultipartBody.Part>): ImageUploadResponse {
+        return apiService.uploadImages(accessToken, parts).body()
+            ?: throw Exception("이미지 업로드 응답이 null입니다")
     }
 
 }

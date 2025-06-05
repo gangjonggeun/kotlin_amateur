@@ -49,7 +49,12 @@ class FloatingAddViewModel @Inject constructor(
                 Log.d("Acces Token: FloatingAdd","$accessToken")
 
                 // 2. 이미지 먼저 서버로 전송 → URL 리스트 응답 받기
-                val imageUrls = repository.uploadImages(accessToken, parts)
+                val imageResponse = repository.uploadImages(accessToken, parts)
+                val imageUrls = if (imageResponse.success) {
+                    imageResponse.imageUrls
+                } else {
+                    throw Exception(imageResponse.message)
+                }
 
                 // 3. PostRequest 생성
                 val request = PostRequest(

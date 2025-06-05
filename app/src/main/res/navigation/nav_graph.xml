@@ -1,33 +1,31 @@
 <?xml version="1.0" encoding="utf-8"?>
 <navigation xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/nav_graph"
     app:startDestination="@id/homeFragment">
 
     <fragment
         android:id="@+id/homeFragment"
         android:name="com.example.kotlin_amateur.navi.home.HomeFragment"
-        android:label="홈" >
+        android:label="홈">
         <action
             android:id="@+id/action_home_to_addPost"
             app:destination="@id/addPostFragment" />
         <action
             android:id="@+id/action_home_to_localPromo"
             app:destination="@id/localPromoFragment" />
+        <!-- 🔥 수정된 액션: postId 파라미터 전달 -->
         <action
-            android:id="@+id/action_home_to_lectureDetail"
-            app:destination="@id/LectureDetailFragment" />
+            android:id="@+id/action_home_to_postDetail"
+            app:destination="@id/postDetailFragment" />
     </fragment>
 
     <fragment
-        android:id="@+id/chatFragment"
-        android:name="com.example.kotlin_amateur.navi.chat.ChatFragment"
-        android:label="채팅" />
-
-    <fragment
-        android:id="@+id/myProfileFragment"
-        android:name="com.example.kotlin_amateur.navi.profile.ProfileFragment"
-        android:label="내 프로필" />
+        android:id="@+id/kakaoMapFragment"
+        android:name="com.example.kotlin_amateur.navi.map.KakaoMapFragment"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
 
     <fragment
         android:id="@+id/addPostFragment"
@@ -38,14 +36,27 @@
         android:id="@+id/localPromoFragment"
         android:label="지역 홍보" />
 
-    <!-- 🔥 새로 추가한 상세보기 프래그먼트 -->
+    <!-- 🔥 수정된 PostDetailFragment 설정 -->
     <fragment
-        android:id="@+id/LectureDetailFragment"
-        android:name="com.example.kotlin_amateur.post.LectureDetailFragment"
-        android:label="게시글 상세보기" >
+        android:id="@+id/postDetailFragment"
+        android:name="com.example.kotlin_amateur.post.PostDetailFragment"
+        android:label="게시글 상세보기">
 
+        <!-- 🎯 중요: postId argument 추가 -->
         <argument
-            android:name="post"
-            app:argType="com.example.kotlin_amateur.model.PostModel" />
+            android:name="postId"
+            app:argType="string"
+            app:nullable="false"/>
+
+        <!-- 선택사항: 다른 필요한 데이터들 -->
+        <argument
+            android:name="title"
+            android:defaultValue="@null"
+            app:argType="string"
+            app:nullable="true" />
+        <action
+            android:id="@+id/action_postDetail_to_postDetail"
+            app:destination="@id/postDetailFragment" />
     </fragment>
+
 </navigation>

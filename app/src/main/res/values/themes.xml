@@ -2,7 +2,8 @@
 <resources>
 
     <style name="Theme.Kotlin_amateur" parent="Theme.Material3.DayNight.NoActionBar">
-        <item name="alertDialogTheme">@style/ThemeOverlay.Material3.MaterialAlertDialog</item>
-        <item name="android:fontFamily">@font/pretend</item>
+        <item name="android:windowBackground">@color/white</item>
+        <item name="android:statusBarColor">#FFFFFF</item>
+        <item name="android:windowLightStatusBar">true</item>
     </style>
 </resources>

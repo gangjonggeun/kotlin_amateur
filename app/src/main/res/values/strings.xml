@@ -11,4 +11,11 @@
     <string name="add_content_input">내용</string>
     <string name="set_region">지역 설정</string>
 
+
+    <string name="kakao_app_key">35b1fe4c1b1ac26786fac46a9dd60588</string>
+    <string name="map_loading">지도를 불러오는 중...</string>
+    <string name="search_hint">맛집, 카페 검색...</string>
+    <string name="location_permission">위치 권한이 필요합니다</string>
+
+
 </resources>

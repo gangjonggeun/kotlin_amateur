@@ -4,6 +4,10 @@
 #
 # For more details, see
 #   http://developer.android.com/guide/developing/tools/proguard.html
+# 카카오 지도 SDK 관련 ProGuard 규칙 (공식 문서)
+-keep class com.kakao.vectormap.** { *; }
+-keep interface com.kakao.vectormap.**
+-dontwarn com.kakao.**
 
 # If your project uses WebView with JS, uncomment the following
 # and specify the fully qualified class name to the JavaScript interface

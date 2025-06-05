@@ -10,12 +10,7 @@ import java.util.Locale
 
 
 data class UserInfo(
-    val accessToken: String,
-    val email: String,
-    val name: String,
-    val googleSub: String,
-    val nickname: String = "",
-    val tag: String = "",
+    val nickname: String,
     val profileImageUrl: String? = null
 )
 
