@@ -1,7 +1,10 @@
 package com.example.kotlin_amateur.repository
 
 import android.content.Context
+import android.util.Log
+import android.util.LruCache
 import com.example.kotlin_amateur.core.auth.TokenStore
+import com.example.kotlin_amateur.model.PostDetail
 import com.example.kotlin_amateur.remote.api.PostDetailApiService
 import com.example.kotlin_amateur.remote.request.CreateCommentRequest
 import com.example.kotlin_amateur.remote.request.CreateReplyRequest
@@ -18,6 +21,8 @@ class PostDetailRepository @Inject constructor(
     private val apiService: PostDetailApiService,
     @ApplicationContext private val context: Context
 ) {
+    private val cache = LruCache<String, PostDetail>(50)
+
     suspend fun getPostDetail(postId: String): Result<PostDetailResponse> {
         return try {
             val accessToken = TokenStore.getAccessToken(context)
@@ -153,5 +158,10 @@ class PostDetailRepository @Inject constructor(
         } catch (e: Exception) {
             Result.failure(e)
         }
+    }
+
+    fun clearCache() {
+        cache.evictAll()
+        Log.d("Repository", "캐시 정리 완료")
     }
 }

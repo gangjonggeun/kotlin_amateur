@@ -280,4 +280,11 @@ class PostDetailViewModel @Inject constructor(
             Log.w(TAG, "⚠️ postId가 비어있어서 새로고침 불가")
         }
     }
+    override fun onCleared() {
+        super.onCleared()
+        // 🧹 메모리 정리
+        _comments.value = emptyList()
+        _postDetail.value = null
+        Log.d("ViewModel", "PostDetailViewModel 메모리 정리 완료")
+    }
 }

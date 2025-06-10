@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.kotlin_amateur.model.PostSummary
 import com.example.kotlin_amateur.model.UserProfile
+import com.example.kotlin_amateur.post.ProfileDialogManager
 import com.example.kotlin_amateur.repository.UserProfileRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -48,6 +49,9 @@ class UserProfileViewModel @Inject constructor(
     // 에러 상태
     private val _error = MutableStateFlow<String?>(null)
     val error = _error.asStateFlow()
+
+    //메모리 상태 관리
+    private val dialogManager = ProfileDialogManager();
 
     /**
      * 사용자 프로필 정보 로드
@@ -159,5 +163,13 @@ class UserProfileViewModel @Inject constructor(
         _userPosts.value = emptyList()
         _error.value = null
         _isLoading.value = false
+    }
+
+
+    override fun onCleared() {
+        super.onCleared()
+        // 🧹 프로필 스택 정리
+        clearData()
+        dialogManager.clear() // ProfileDialogManager 정리
     }
 }

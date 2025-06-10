@@ -13,15 +13,19 @@ plugins {
 
 android {
     namespace = "com.example.kotlin_amateur"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.example.kotlin_amateur"
         minSdk = 26
-        targetSdk = 34
+        targetSdk = 35
         versionCode = 1
         versionName = "1.0"
-
+        // 🔥 메모리 관련 설정
+        multiDexEnabled = true
+        manifestPlaceholders["emoji_compat_config"] = "disabled"
+        // 🔥 이미지 압축 설정
+        vectorDrawables.useSupportLibrary = true
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
             useSupportLibrary = true
@@ -30,11 +34,17 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+        }
+        debug {
+            // 🔥 Debug에서도 약간의 최적화
+            isMinifyEnabled = false
+            isShrinkResources = false
         }
     }
     compileOptions {
@@ -45,6 +55,7 @@ android {
         viewBinding = true
         dataBinding = true
         compose = true
+        buildConfig = true
     }
     composeOptions {
         kotlinCompilerExtensionVersion = "1.5.13"
@@ -59,6 +70,9 @@ android {
     }
 }
 dependencies {
+    implementation(libs.androidx.emoji2.bundled)
+    // 🔥 메모리 누수 감지 (개발용)
+    debugImplementation("com.squareup.leakcanary:leakcanary-android:2.12")
 
     // 🗺️ 카카오 지도 SDK (추가)
     implementation("com.kakao.maps.open:android:2.12.8")
@@ -96,6 +110,7 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.6")
     implementation("androidx.activity:activity-ktx:1.8.2")
     implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0")
+    implementation("com.google.accompanist:accompanist-swiperefresh:0.34.0")
 
     // ✅ Navigation
     implementation("androidx.navigation:navigation-fragment-ktx:2.8.3")
@@ -126,7 +141,7 @@ dependencies {
     // ✅ Compose + Hilt (업데이트)
     implementation("androidx.hilt:hilt-navigation-compose:1.1.0")
     implementation("androidx.activity:activity-compose:1.8.2")
-    implementation(platform("androidx.compose:compose-bom:2024.04.01"))  // ✨ 업데이트
+    implementation(platform("androidx.compose:compose-bom:2024.12.01"))  // ✨ 업데이트
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.ui:ui-tooling-preview")

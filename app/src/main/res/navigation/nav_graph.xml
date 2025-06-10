@@ -19,6 +19,7 @@
         <action
             android:id="@+id/action_home_to_postDetail"
             app:destination="@id/postDetailFragment" />
+
     </fragment>
 
     <fragment

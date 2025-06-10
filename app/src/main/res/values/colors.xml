@@ -66,6 +66,7 @@
     <color name="light_violet">#B266FF</color>
     <color name="dark_violet">#5A009D</color>
 
+    <color name="main_color">#FF667eea</color>
     <!-- Pastel Colors -->
     <color name="pastel_blue">#A7C7E7</color>
     <color name="pastel_green">#77DD77</color>

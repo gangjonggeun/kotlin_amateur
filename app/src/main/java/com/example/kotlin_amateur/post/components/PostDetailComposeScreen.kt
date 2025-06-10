@@ -14,10 +14,13 @@ import androidx.compose.ui.*
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.*
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import coil.request.CachePolicy
 import com.example.kotlin_amateur.model.Comment
 import com.example.kotlin_amateur.model.PostDetail
 import com.example.kotlin_amateur.model.Reply
@@ -25,7 +28,58 @@ import com.example.kotlin_amateur.ui.icon.CustomIcons
 import com.example.kotlin_amateur.viewmodel.PostDetailViewModel
 
 /**
- * PostDetailComposeScreen - 바텀시트 + 추천 기능 추가
+ * 🔥 메모리 최적화된 AsyncImage 컴포넌트
+ */
+@Composable
+fun OptimizedAsyncImage(
+    model: Any?,
+    contentDescription: String?,
+    modifier: Modifier = Modifier,
+    size: Dp = 44.dp,
+    contentScale: ContentScale = ContentScale.Crop
+) {
+    AsyncImage(
+        model = ImageRequest.Builder(LocalContext.current)
+            .data(model)
+            .size(size.value.toInt()) // 🔥 크기 제한 필수!
+            .memoryCachePolicy(CachePolicy.ENABLED)
+            .diskCachePolicy(CachePolicy.ENABLED)
+            .crossfade(true)
+            .build(),
+        contentDescription = contentDescription,
+        modifier = modifier,
+        contentScale = contentScale
+    )
+}
+
+/**
+ * 🔥 큰 이미지용 최적화된 AsyncImage
+ */
+@Composable
+fun OptimizedAsyncImageLarge(
+    model: Any?,
+    contentDescription: String?,
+    modifier: Modifier = Modifier,
+    maxWidth: Int = 800,
+    maxHeight: Int = 600,
+    contentScale: ContentScale = ContentScale.Crop
+) {
+    AsyncImage(
+        model = ImageRequest.Builder(LocalContext.current)
+            .data(model)
+            .size(maxWidth, maxHeight) // 🔥 최대 크기 제한
+            .memoryCachePolicy(CachePolicy.ENABLED)
+            .diskCachePolicy(CachePolicy.ENABLED)
+            .crossfade(true)
+            .build(),
+        contentDescription = contentDescription,
+        modifier = modifier,
+        contentScale = contentScale
+    )
+}
+
+/**
+ * PostDetailComposeScreen - 메모리 최적화 버전
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -36,6 +90,7 @@ fun PostDetailComposeScreen(
     onShowToast: (String) -> Unit,
     onProfileClick: (String) -> Unit = {}
 ) {
+
     // ViewModel에서 상태 수집
     val postDetail by viewModel.postDetail.collectAsState()
     val comments by viewModel.comments.collectAsState()
@@ -50,9 +105,12 @@ fun PostDetailComposeScreen(
     // 🆕 댓글 섹션 확장/축소 상태
     var isCommentSectionExpanded by remember { mutableStateOf(true) }
 
+    // 🔥 메모리 최적화: 한 번만 로드되도록 제어
     LaunchedEffect(postId) {
-        viewModel.loadPostDetail(postId)
-        viewModel.loadComments(postId)
+        if (viewModel.postDetail.value?.id != postId) {
+            viewModel.loadPostDetail(postId)
+            viewModel.loadComments(postId)
+        }
     }
 
     error?.let { errorMessage ->
@@ -78,7 +136,7 @@ fun PostDetailComposeScreen(
                 )
             }
 
-            // 2. 작성자 정보 섹션 (🔥 하드코딩 수정)
+            // 2. 작성자 정보 섹션
             item(key = "author_info") {
                 AuthorInfoSection(
                     post = postDetail,
@@ -115,7 +173,7 @@ fun PostDetailComposeScreen(
                 )
             }
 
-            // 6. 댓글 헤더 (🔥 클릭으로 열고닫기 추가)
+            // 6. 댓글 헤더
             item(key = "comment_header") {
                 CommentHeaderClickable(
                     commentCount = comments.size,
@@ -125,7 +183,7 @@ fun PostDetailComposeScreen(
                 )
             }
 
-            // 7. 댓글 리스트 (확장된 경우만 표시, 바텀시트 답글)
+            // 7. 댓글 리스트 (확장된 경우만 표시)
             if (isCommentSectionExpanded) {
                 items(
                     items = comments,
@@ -134,7 +192,6 @@ fun PostDetailComposeScreen(
                     CommentItemWithBottomSheet(
                         comment = comment,
                         onReplyClick = {
-                            // 🔥 바텀시트로 답글 입력
                             replyTargetComment = comment
                             showReplyBottomSheet = true
                         },
@@ -146,7 +203,7 @@ fun PostDetailComposeScreen(
                 }
             }
 
-            // 8. 🆕 게시글 추천 섹션
+            // 8. 게시글 추천 섹션
             item(key = "recommended_posts") {
                 RecommendedPostsSection(
                     onPostClick = { recommendedPostId ->
@@ -174,7 +231,7 @@ fun PostDetailComposeScreen(
             }
         )
 
-        // 🔥 답글 작성 바텀시트
+        // 답글 작성 바텀시트
         if (showReplyBottomSheet) {
             ModalBottomSheet(
                 onDismissRequest = {
@@ -204,7 +261,7 @@ fun PostDetailComposeScreen(
 }
 
 /**
- * 🔥 하드코딩 수정된 AuthorInfoSection
+ * 🔥 메모리 최적화된 AuthorInfoSection
  */
 @Composable
 fun AuthorInfoSection(
@@ -219,7 +276,6 @@ fun AuthorInfoSection(
         modifier = modifier
             .fillMaxWidth()
             .clickable {
-                // 🔥 하드코딩 제거 - PostDetail에 authorUserId 필드 사용
                 post.authorUserId?.let { userId ->
                     onProfileClick(userId)
                 } ?: run {
@@ -227,13 +283,12 @@ fun AuthorInfoSection(
                 }
             }
     ) {
-        AsyncImage(
+        OptimizedAsyncImage(
             model = post.authorProfileImage,
             contentDescription = "${post.authorNickname} 프로필 이미지",
             modifier = Modifier
                 .size(44.dp)
-                .clip(CircleShape),
-            contentScale = ContentScale.Crop
+                .clip(CircleShape)
         )
 
         Column(
@@ -328,324 +383,6 @@ fun CommentInputBar(
     }
 }
 
-// 🔥 기존 컴포넌트들 (사용하지 않지만 호환성을 위해 유지)
-@Composable
-fun CommentHeader(
-    commentCount: Int,
-    modifier: Modifier = Modifier
-) {
-    Row(
-        modifier = modifier,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = "댓글",
-            fontWeight = FontWeight.Bold,
-            fontSize = 17.sp,
-            color = Color(0xFF333333)
-        )
-        Spacer(modifier = Modifier.width(8.dp))
-        Text(
-            text = "$commentCount",
-            fontSize = 15.sp,
-            color = Color(0xFF666666),
-            fontWeight = FontWeight.Medium,
-            modifier = Modifier
-                .background(
-                    color = Color(0xFFF5F5F5),
-                    shape = RoundedCornerShape(12.dp)
-                )
-                .padding(horizontal = 8.dp, vertical = 2.dp)
-        )
-    }
-}
-
-@Composable
-fun CommentItem(
-    comment: Comment,
-    onReplyClick: () -> Unit,
-    onReplySubmit: (String) -> Unit,
-    onToggleReplies: () -> Unit,
-    onProfileClick: (String) -> Unit = {}
-) {
-    var replyText by remember { mutableStateOf("") }
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
-    ) {
-        // 메인 댓글
-        CommentContent(
-            profileImage = comment.authorProfileImage,
-            nickname = comment.authorNickname,
-            content = comment.content,
-            timestamp = comment.createdAt,
-            onReplyClick = onReplyClick,
-            onProfileClick = {
-                onProfileClick("1") // 임시 하드코딩
-            }
-        )
-
-        // 답글 입력창
-        AnimatedVisibility(
-            visible = comment.isReplyInputVisible,
-            enter = slideInVertically() + fadeIn(),
-            exit = slideOutVertically() + fadeOut()
-        ) {
-            ReplyInputSection(
-                value = replyText,
-                onValueChange = { replyText = it },
-                onSubmit = {
-                    if (replyText.isNotBlank()) {
-                        onReplySubmit(replyText)
-                        replyText = ""
-                    }
-                },
-                modifier = Modifier.padding(top = 8.dp, start = 52.dp)
-            )
-        }
-
-        // 답글 더보기/접기 버튼
-        if (comment.replyCount > 0) {
-            TextButton(
-                onClick = onToggleReplies,
-                modifier = Modifier.padding(start = 52.dp, top = 4.dp)
-            ) {
-                Icon(
-                    imageVector = if (comment.isRepliesVisible)
-                        Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp),
-                    tint = Color(0xFF666666)
-                )
-                Text(
-                    text = if (comment.isRepliesVisible)
-                        "답글 접기" else "답글 ${comment.replyCount}개 보기",
-                    fontSize = 14.sp,
-                    color = Color(0xFF666666),
-                    modifier = Modifier.padding(start = 4.dp)
-                )
-            }
-        }
-
-        // 답글 리스트
-        AnimatedVisibility(
-            visible = comment.isRepliesVisible,
-            enter = slideInVertically() + fadeIn(),
-            exit = slideOutVertically() + fadeOut()
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(start = 52.dp)
-            ) {
-                comment.replies.forEach { reply ->
-                    ReplyItem(
-                        reply = reply,
-                        onProfileClick = {
-                            onProfileClick("1") // 임시 하드코딩
-                        }
-                    )
-                }
-            }
-        }
-
-        // 구분선
-        HorizontalDivider(
-            modifier = Modifier.padding(top = 12.dp),
-            color = Color(0xFFEEEEEE),
-            thickness = 1.dp
-        )
-    }
-}
-
-@Composable
-fun CommentContent(
-    profileImage: String?,
-    nickname: String,
-    content: String,
-    timestamp: String,
-    onReplyClick: () -> Unit,
-    onProfileClick: () -> Unit = {}
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        // 프로필 이미지
-        AsyncImage(
-            model = profileImage,
-            contentDescription = "$nickname 프로필 이미지",
-            modifier = Modifier
-                .size(40.dp)
-                .clip(CircleShape)
-                .clickable { onProfileClick() },
-            contentScale = ContentScale.Crop
-        )
-
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .padding(start = 12.dp)
-        ) {
-            // 닉네임 + 시간
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = nickname,
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 15.sp,
-                    color = Color(0xFF333333),
-                    modifier = Modifier.clickable { onProfileClick() }
-                )
-                Text(
-                    text = timestamp,
-                    fontSize = 13.sp,
-                    color = Color(0xFF999999)
-                )
-            }
-
-            // 댓글 내용
-            Text(
-                text = content,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 4.dp),
-                fontSize = 16.sp,
-                color = Color(0xFF444444),
-                lineHeight = 22.sp
-            )
-
-            // 답글 버튼
-            TextButton(
-                onClick = onReplyClick,
-                modifier = Modifier.padding(top = 4.dp),
-                contentPadding = PaddingValues(0.dp)
-            ) {
-                Text(
-                    text = "답글 달기",
-                    fontSize = 13.sp,
-                    color = Color(0xFF666666)
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun ReplyInputSection(
-    value: String,
-    onValueChange: (String) -> Unit,
-    onSubmit: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFFF8F9FA)),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            OutlinedTextField(
-                value = value,
-                onValueChange = onValueChange,
-                modifier = Modifier.weight(1f),
-                placeholder = {
-                    Text(
-                        text = "답글을 입력하세요...",
-                        fontSize = 14.sp,
-                        color = Color(0xFF999999)
-                    )
-                },
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = Color(0xFF4285F4),
-                    unfocusedBorderColor = Color.Transparent,
-                    focusedContainerColor = Color.White,
-                    unfocusedContainerColor = Color.White
-                ),
-                shape = RoundedCornerShape(20.dp),
-                textStyle = TextStyle(fontSize = 14.sp),
-                maxLines = 3
-            )
-
-            IconButton(
-                onClick = onSubmit,
-                enabled = value.isNotBlank()
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Send,
-                    contentDescription = "답글 전송",
-                    tint = if (value.isNotBlank())
-                        Color(0xFF4285F4) else Color(0xFFCCCCCC)
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun ReplyItem(
-    reply: Reply,
-    onProfileClick: () -> Unit = {}
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 6.dp)
-    ) {
-        // 답글 표시 아이콘
-        Icon(
-            imageVector = CustomIcons.Reply,
-            contentDescription = null,
-            modifier = Modifier
-                .size(16.dp)
-                .padding(top = 2.dp),
-            tint = Color(0xFF999999)
-        )
-
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .padding(start = 8.dp)
-        ) {
-            // 닉네임 + 시간
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(
-                    text = reply.authorNickname,
-                    fontWeight = FontWeight.Medium,
-                    fontSize = 14.sp,
-                    color = Color(0xFF333333),
-                    modifier = Modifier.clickable { onProfileClick() }
-                )
-                Text(
-                    text = reply.createdAt,
-                    fontSize = 12.sp,
-                    color = Color(0xFF999999)
-                )
-            }
-
-            // 답글 내용
-            Text(
-                text = reply.content,
-                modifier = Modifier.padding(top = 2.dp),
-                fontSize = 15.sp,
-                color = Color(0xFF444444),
-                lineHeight = 20.sp
-            )
-        }
-    }
-}
-
 /**
  * 🔥 클릭으로 열고닫기 가능한 CommentHeader
  */
@@ -686,7 +423,6 @@ fun CommentHeaderClickable(
             )
         }
 
-        // 확장/축소 아이콘
         Icon(
             imageVector = if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
             contentDescription = if (isExpanded) "댓글 접기" else "댓글 펼치기",
@@ -697,7 +433,7 @@ fun CommentHeaderClickable(
 }
 
 /**
- * 🔥 바텀시트 답글 입력 방식의 CommentItem
+ * 🔥 메모리 최적화된 CommentItemWithBottomSheet
  */
 @Composable
 fun CommentItemWithBottomSheet(
@@ -711,7 +447,6 @@ fun CommentItemWithBottomSheet(
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
-        // 메인 댓글 (하드코딩 수정)
         CommentContentImproved(
             profileImage = comment.authorProfileImage,
             nickname = comment.authorNickname,
@@ -731,7 +466,7 @@ fun CommentItemWithBottomSheet(
             }
         )
 
-        // 🔥 답글 리스트 (L모양 구분선과 시작선 15dp)
+        // 답글 리스트
         AnimatedVisibility(
             visible = comment.isRepliesVisible,
             enter = slideInVertically() + fadeIn(),
@@ -756,7 +491,6 @@ fun CommentItemWithBottomSheet(
             }
         }
 
-        // 댓글 하단 구분선
         HorizontalDivider(
             modifier = Modifier.padding(top = 12.dp),
             color = Color(0xFFEEEEEE),
@@ -784,15 +518,15 @@ fun CommentContentImproved(
         Row(
             modifier = Modifier.fillMaxWidth()
         ) {
-            // 프로필 이미지 (클릭 가능)
-            AsyncImage(
+            // 🔥 메모리 최적화된 프로필 이미지
+            OptimizedAsyncImage(
                 model = profileImage,
                 contentDescription = "$nickname 프로필 이미지",
                 modifier = Modifier
                     .size(40.dp)
                     .clip(CircleShape)
                     .clickable { onProfileClick() },
-                contentScale = ContentScale.Crop
+                size = 40.dp
             )
 
             Column(
@@ -800,7 +534,6 @@ fun CommentContentImproved(
                     .weight(1f)
                     .padding(start = 12.dp)
             ) {
-                // 닉네임 + 시간
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -820,7 +553,6 @@ fun CommentContentImproved(
                     )
                 }
 
-                // 댓글 내용
                 Text(
                     text = content,
                     modifier = Modifier
@@ -833,15 +565,13 @@ fun CommentContentImproved(
             }
         }
 
-        // 🔥 답글 버튼들 (같은 평행선에 배치)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 52.dp), // 프로필 이미지 + 간격과 맞춤
+                .padding(start = 52.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // 왼쪽: 답글 더보기/접기 버튼
             if (hasReplies) {
                 TextButton(
                     onClick = onToggleReplies,
@@ -863,15 +593,13 @@ fun CommentContentImproved(
                     )
                 }
             } else {
-                Spacer(modifier = Modifier.width(1.dp)) // 빈 공간 유지
+                Spacer(modifier = Modifier.width(1.dp))
             }
 
-            // 오른쪽: 답글 달기 버튼
             TextButton(
                 onClick = onReplyClick,
                 contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
             ) {
-
                 Text(
                     text = "\uD83D\uDCAC 답글 달기",
                     fontSize = 13.sp,
@@ -894,30 +622,27 @@ fun ReplyItemWithLShape(
             .fillMaxWidth()
             .padding(vertical = 4.dp)
     ) {
-        // 🔥 L모양 구분선 (얇고 가까운 버전)
         Box(
             modifier = Modifier
-                .width(40.dp) // 너비 줄임 (52dp → 40dp)
-                .height(36.dp) // 고정 높이
+                .width(40.dp)
+                .height(36.dp)
         ) {
-            // 세로선 (더 얇게, 답글에 가까이)
             Box(
                 modifier = Modifier
-                    .width(1.dp) // 2dp → 1dp로 더 얇게
-                    .height(16.dp) // 고정 길이
-                    .offset(x = 5.dp) // 10dp → 8dp로 답글에 더 가까이
+                    .width(1.dp)
+                    .height(16.dp)
+                    .offset(x = 5.dp)
                     .background(
                         Color(0xFFDDDDDD),
                         RoundedCornerShape(0.5.dp)
                     )
             )
 
-            // 가로선 (L모양 완성)
             Box(
                 modifier = Modifier
-                    .width(14.dp) // 18dp → 14dp로 줄임
-                    .height(1.dp) // 2dp → 1dp로 더 얇게
-                    .offset(x = 5.dp, y = 16.dp) // 세로선과 연결, x도 맞춤
+                    .width(14.dp)
+                    .height(1.dp)
+                    .offset(x = 5.dp, y = 16.dp)
                     .background(
                         Color(0xFFDDDDDD),
                         RoundedCornerShape(0.5.dp)
@@ -925,13 +650,11 @@ fun ReplyItemWithLShape(
             )
         }
 
-        // 답글 내용
         Column(
             modifier = Modifier
                 .weight(1f)
-                .padding(start = 4.dp) // 8dp → 4dp로 줄여서 더 가까이
+                .padding(start = 4.dp)
         ) {
-            // 닉네임 + 시간
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -951,7 +674,6 @@ fun ReplyItemWithLShape(
                 )
             }
 
-            // 답글 내용
             Text(
                 text = reply.content,
                 modifier = Modifier.padding(top = 2.dp, bottom = 4.dp),
@@ -964,7 +686,7 @@ fun ReplyItemWithLShape(
 }
 
 /**
- * 🆕 답글 작성 바텀시트 컨텐츠
+ * 🔥 메모리 최적화된 답글 작성 바텀시트
  */
 @Composable
 fun ReplyBottomSheetContent(
@@ -980,7 +702,6 @@ fun ReplyBottomSheetContent(
             .padding(16.dp)
             .navigationBarsPadding()
     ) {
-        // 바텀시트 핸들
         Box(
             modifier = Modifier
                 .width(40.dp)
@@ -991,7 +712,6 @@ fun ReplyBottomSheetContent(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // 헤더
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -1009,7 +729,6 @@ fun ReplyBottomSheetContent(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // 원본 댓글 미리보기
         targetComment?.let { comment ->
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -1021,13 +740,13 @@ fun ReplyBottomSheetContent(
                     Row(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        AsyncImage(
+                        OptimizedAsyncImage(
                             model = comment.authorProfileImage,
                             contentDescription = null,
                             modifier = Modifier
                                 .size(24.dp)
                                 .clip(CircleShape),
-                            contentScale = ContentScale.Crop
+                            size = 24.dp
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
@@ -1048,7 +767,6 @@ fun ReplyBottomSheetContent(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // 답글 입력창
         OutlinedTextField(
             value = replyText,
             onValueChange = { replyText = it },
@@ -1068,7 +786,6 @@ fun ReplyBottomSheetContent(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // 전송 버튼
         Button(
             onClick = {
                 if (replyText.isNotBlank()) {
@@ -1087,7 +804,7 @@ fun ReplyBottomSheetContent(
 }
 
 /**
- * 🆕 게시글 추천 섹션
+ * 🔥 메모리 최적화된 게시글 추천 섹션
  */
 @Composable
 fun RecommendedPostsSection(
@@ -1095,7 +812,6 @@ fun RecommendedPostsSection(
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier) {
-        // 섹션 헤더
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -1114,11 +830,10 @@ fun RecommendedPostsSection(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // TODO: 실제 추천 로직 구현 예정
         val dummyRecommendedPosts = listOf(
-            DummyPost("1", "맛집 추천해요!", "https://picsum.photos/400/300?random=1"),
-            DummyPost("2", "오늘 날씨 너무 좋네요", "https://picsum.photos/400/300?random=2"),
-            DummyPost("3", "새로운 카페 발견!", "https://picsum.photos/400/300?random=3")
+            DummyPost("1", "맛집 추천해요!", "https://picsum.photos/300/240?random=1"),
+            DummyPost("2", "오늘 날씨 너무 좋네요", "https://picsum.photos/300/240?random=2"),
+            DummyPost("3", "새로운 카페 발견!", "https://picsum.photos/300/240?random=3")
         )
 
         LazyRow(
@@ -1135,7 +850,7 @@ fun RecommendedPostsSection(
 }
 
 /**
- * 🆕 추천 게시글 아이템
+ * 🔥 메모리 최적화된 추천 게시글 아이템
  */
 @Composable
 fun RecommendedPostItem(
@@ -1150,12 +865,13 @@ fun RecommendedPostItem(
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column {
-            AsyncImage(
+            OptimizedAsyncImage(
                 model = post.imageUrl,
                 contentDescription = null,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(120.dp),
+                size = 300.dp, // 작은 크기로 제한
                 contentScale = ContentScale.Crop
             )
 
@@ -1183,14 +899,18 @@ fun RecommendedPostItem(
     }
 }
 
-// 🆕 임시 데이터 클래스
 data class DummyPost(
     val id: String,
     val title: String,
     val imageUrl: String
 )
 
-// 기존 컴포넌트들은 그대로 유지
+/**
+ * 🔥 메모리 최적화된 ImageSection
+ */
+/**
+ * 🔥 메모리 최적화된 ImageSection
+ */
 @Composable
 fun ImageSection(
     images: List<String>,
@@ -1210,10 +930,12 @@ fun ImageSection(
                 state = pagerState,
                 modifier = Modifier.fillMaxSize()
             ) { page ->
-                AsyncImage(
+                OptimizedAsyncImageLarge(
                     model = images[page],
                     contentDescription = "게시글 이미지 ${page + 1}",
                     modifier = Modifier.fillMaxSize(),
+                    maxWidth = 800,
+                    maxHeight = 600,
                     contentScale = ContentScale.Crop
                 )
             }

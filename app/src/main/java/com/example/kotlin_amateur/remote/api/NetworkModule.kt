@@ -5,6 +5,7 @@ import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
+import okhttp3.ConnectionPool
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
@@ -27,28 +28,19 @@ object NetworkModule {
             level = HttpLoggingInterceptor.Level.BODY // 🔧 상세 로깅
         }
 
-        return OkHttpClient.Builder()
+        return  OkHttpClient.Builder()
             .addInterceptor(loggingInterceptor)
-            // 🔧 에뮬레이터용 관대한 타임아웃
-            .connectTimeout(30, TimeUnit.SECONDS)
-            .readTimeout(30, TimeUnit.SECONDS)
-            .writeTimeout(30, TimeUnit.SECONDS)
-            .retryOnConnectionFailure(true)
-            // 🔧 디버깅용 인터셉터 추가
-            .addInterceptor { chain ->
-                val request = chain.request()
-                Log.d("OkHttp", "🔗 요청 URL: ${request.url}")
-                Log.d("OkHttp", "🔗 요청 메서드: ${request.method}")
-
-                try {
-                    val response = chain.proceed(request)
-                    Log.d("OkHttp", "✅ 응답 코드: ${response.code}")
-                    response
-                } catch (e: Exception) {
-                    Log.e("OkHttp", "❌ 네트워크 오류: ${e.message}", e)
-                    throw e
-                }
-            }
+            .connectTimeout(10, TimeUnit.SECONDS) // 🔥 이미 적용됨
+            .readTimeout(10, TimeUnit.SECONDS)
+            .writeTimeout(10, TimeUnit.SECONDS)
+            .connectionPool(
+                ConnectionPool(
+                maxIdleConnections = 2, // 🔥 5 → 2로 더 제한
+                keepAliveDuration = 1, // 🔥 5분 → 1분으로 단축
+                TimeUnit.MINUTES
+            )
+            )
+            .retryOnConnectionFailure(false) // 🔥 재시도 비활성화로 메모리 절약
             .build()
     }
 
