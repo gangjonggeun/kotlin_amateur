@@ -3,7 +3,6 @@ package com.example.kotlin_amateur
 import android.app.Application
 import android.os.Build
 import android.util.Log
-import androidx.emoji2.text.EmojiCompat
 import com.kakao.vectormap.KakaoMapSdk
 import dagger.hilt.android.HiltAndroidApp
 import coil.Coil
@@ -22,6 +21,25 @@ class MyApplication : Application() {
         initKakaoMapSafely()
         monitorMemoryUsage()
         logInitialMemoryUsage()
+
+        // Coil 메모리 최적화 설정
+        val imageLoader = ImageLoader.Builder(this)
+            .memoryCache {
+                MemoryCache.Builder(this)
+                    .maxSizePercent(0.15) // 앱 메모리의 15%만 사용 (기본값 25%)
+                    .build()
+            }
+            .diskCache {
+                DiskCache.Builder()
+                    .directory(cacheDir.resolve("image_cache"))
+                    .maxSizeBytes(50 * 1024 * 1024) // 50MB 제한
+                    .build()
+            }
+            .crossfade(true)
+            .respectCacheHeaders(false) // 캐시 헤더 무시로 메모리 절약
+            .build()
+
+        Coil.setImageLoader(imageLoader)
     }
     private fun monitorMemoryUsage() {
         val runtime = Runtime.getRuntime()

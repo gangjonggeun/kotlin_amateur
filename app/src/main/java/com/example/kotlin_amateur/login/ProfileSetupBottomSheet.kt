@@ -82,19 +82,25 @@ class ProfileSetupBottomSheet : BottomSheetDialogFragment() {
             imagePickerLauncher.launch("image/*")
         }
 
-        viewModel.updateSuccess.observe(viewLifecycleOwner) { success ->
-            Log.d("✅ observe", "result: $success")
-            if (success) {
-                shouldNavigate = true
-                dismiss()
-            } else {
-//                Toast.makeText(requireContext(), "프로필 설정 실패", Toast.LENGTH_SHORT).show()
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.updateSuccess.collect { success ->
+                Log.d("✅ collect", "result: $success")
+                if (success) {
+                    shouldNavigate = true
+                    dismiss()
+                    // 상태 리셋 (필요시)
+                    viewModel.resetUpdateSuccess()
+                }
             }
         }
 
-        viewModel.errorMessage.observe(viewLifecycleOwner) { message ->
-            message?.let {
-                Toast.makeText(requireContext(), it, Toast.LENGTH_SHORT).show()
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.errorMessage.collect { message ->
+                message?.let {
+                    Toast.makeText(requireContext(), it, Toast.LENGTH_SHORT).show()
+                    // 에러 메시지 클리어 (필요시)
+                    viewModel.clearErrorMessage()
+                }
             }
         }
     }

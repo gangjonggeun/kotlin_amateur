@@ -26,8 +26,7 @@ import android.content.pm.PackageManager
 import android.util.Base64
 
 import androidx.appcompat.app.AlertDialog
-import androidx.emoji2.bundled.BundledEmojiCompatConfig
-import androidx.emoji2.text.EmojiCompat
+
 import java.security.MessageDigest
 
 @AndroidEntryPoint
@@ -43,8 +42,7 @@ class MainActivity : AppCompatActivity(), ProfileSetupBottomSheet.OnProfileSetup
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        // 🔥 EmojiCompat 메모리 최적화
-        disableEmojiCompat()
+
 
         //Jetpack Navigation 연결
         val navHostFragment =
@@ -119,17 +117,6 @@ class MainActivity : AppCompatActivity(), ProfileSetupBottomSheet.OnProfileSetup
         }
     }
 
-    private fun disableEmojiCompat() {
-        try {
-            // EmojiCompat 비활성화로 메모리 절약
-            val config = BundledEmojiCompatConfig(this)
-                .setReplaceAll(false) // 🔥 모든 이모지 교체 비활성화
-            EmojiCompat.init(config)
 
-            Log.d("MainActivity", "✅ EmojiCompat 최적화 완료")
-        } catch (e: Exception) {
-            Log.w("MainActivity", "⚠️ EmojiCompat 비활성화 실패: ${e.message}")
-        }
-    }
 
 }

@@ -41,11 +41,16 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.google.android.gms.location.*
 import android.Manifest
+import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.provider.Settings
+import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import android.location.Location
+import android.location.LocationManager
 
 import com.example.kotlin_amateur.R
 import com.example.kotlin_amateur.viewmodel.MapRecommendViewModel
@@ -85,37 +90,79 @@ fun KakaoMapRecommendScreen(
     // 🆕 핫플레이스 카드 표시 상태
     var showHotPlaceCard by remember { mutableStateOf(true) }
 
-    // 📍 위치 관련 상태
+    // 📍 위치 관련 상태 - 명확한 네이밍
     var currentLocation by remember { mutableStateOf<LatLng?>(null) }
     var hasLocationPermission by remember { mutableStateOf(false) }
+    var isGpsEnabled by remember { mutableStateOf(false) } // 🔥 GPS 활성화 상태
+    var showMap by remember { mutableStateOf(false) } // 🔥 지도 표시 여부
 
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
 
-    // 🔥 위치 클라이언트 (갱신을 위해 remember로 관리)
+    // 🔥 위치 클라이언트
     val fusedLocationClient = remember {
         LocationServices.getFusedLocationProviderClient(context)
     }
 
-    // 위치 권한 요청 런처
+    // 🚀 통합된 위치 권한 런처 (중복 제거)
     val locationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
-        hasLocationPermission = permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
-                permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+        val fineLocationGranted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] ?: false
+        val coarseLocationGranted = permissions[Manifest.permission.ACCESS_COARSE_LOCATION] ?: false
 
-        // 권한 획득 시 즉시 위치 갱신
-        if (hasLocationPermission) {
-            getCurrentLocation(fusedLocationClient) { location ->
-                currentLocation = location
-                kakaoMap?.moveCamera(
-                    CameraUpdateFactory.newCenterPosition(location, 15)
-                )
+        hasLocationPermission = fineLocationGranted || coarseLocationGranted
+        isGpsEnabled = isLocationServiceEnabled(context)
+
+        when {
+            hasLocationPermission && isGpsEnabled -> {
+                // ✅ 권한도 있고 GPS도 켜져있음
+                getCurrentLocation(fusedLocationClient) { location ->
+                    currentLocation = location
+                    showMap = true
+
+                    // 🗺️ 지도가 준비된 후 위치 이동
+                    kakaoMap?.let { map ->
+                        map.moveCamera(CameraUpdateFactory.newCenterPosition(location, 15))
+                        addCurrentLocationMarker(map, location)
+                    }
+                }
+            }
+
+            hasLocationPermission && !isGpsEnabled -> {
+                // ⚠️ 권한은 있지만 GPS가 꺼져있음 - 설정으로 유도
+                showLocationSettingsDialog(context)
+            }
+
+            else -> {
+                // ❌ 권한이 없음
+                showMap = false
+                println("⚠️ 위치 권한이 거부되었습니다.")
             }
         }
     }
 
-    // 위치 권한 체크 및 요청
+    // 🚀 GPS 설정 런처
+    val locationSettingsLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        // GPS 설정 화면에서 돌아온 후 다시 체크
+        isGpsEnabled = isLocationServiceEnabled(context)
+
+        if (hasLocationPermission && isGpsEnabled) {
+            getCurrentLocation(fusedLocationClient) { location ->
+                currentLocation = location
+                showMap = true
+
+                kakaoMap?.let { map ->
+                    map.moveCamera(CameraUpdateFactory.newCenterPosition(location, 15))
+                    addCurrentLocationMarker(map, location)
+                }
+            }
+        }
+    }
+
+    // 📍 초기 위치 권한 및 GPS 상태 체크
     LaunchedEffect(Unit) {
         val fineLocationGranted = ContextCompat.checkSelfPermission(
             context, Manifest.permission.ACCESS_FINE_LOCATION
@@ -125,65 +172,156 @@ fun KakaoMapRecommendScreen(
             context, Manifest.permission.ACCESS_COARSE_LOCATION
         ) == PackageManager.PERMISSION_GRANTED
 
-        if (fineLocationGranted || coarseLocationGranted) {
-            hasLocationPermission = true
-            // 권한이 있으면 즉시 위치 획득
-            getCurrentLocation(fusedLocationClient) { location ->
-                currentLocation = location
-            }
-        } else {
-            locationPermissionLauncher.launch(
-                arrayOf(
-                    Manifest.permission.ACCESS_FINE_LOCATION,
-                    Manifest.permission.ACCESS_COARSE_LOCATION
-                )
-            )
-        }
-    }
+        hasLocationPermission = fineLocationGranted || coarseLocationGranted
+        isGpsEnabled = isLocationServiceEnabled(context)
 
-    // 🔄 위치 주기적 갱신 (5초마다)
-    LaunchedEffect(hasLocationPermission) {
-        if (hasLocationPermission) {
-            while (true) {
+        when {
+            !hasLocationPermission -> {
+                // 🔥 권한이 없으면 즉시 권한 요청 런처 호출
+                locationPermissionLauncher.launch(
+                    arrayOf(
+                        Manifest.permission.ACCESS_FINE_LOCATION,
+                        Manifest.permission.ACCESS_COARSE_LOCATION
+                    )
+                )
+            }
+
+            hasLocationPermission && !isGpsEnabled -> {
+                // 🔥 권한은 있지만 GPS가 꺼져있으면 설정 유도
+                showLocationSettingsDialog(context)
+            }
+
+            hasLocationPermission && isGpsEnabled -> {
+                // ✅ 모든 조건이 만족하면 위치 획득 및 지도 표시
                 getCurrentLocation(fusedLocationClient) { location ->
                     currentLocation = location
-                    // 📍 간단하게 GPS 좌표에 마커만 찍기
+                    showMap = true
                 }
-                delay(10000) // 5초마다 갱신
             }
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        // 🗺️ 카카오 지도
-        AndroidView(
-            factory = { ctx ->
-                MapView(ctx).apply {
-                    start(object : MapLifeCycleCallback() {
-                        override fun onMapDestroy() {
-                            // 지도 종료시 정리
-                        }
+    // 🔄 생명주기 관찰자로 GPS 상태 변경 감지
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_RESUME -> {
+                    // 🔥 앱이 포그라운드로 돌아올 때 GPS 상태 재확인
+                    val newGpsStatus = isLocationServiceEnabled(context)
+                    if (isGpsEnabled != newGpsStatus) {
+                        isGpsEnabled = newGpsStatus
 
-                        override fun onMapError(exception: Exception) {
-                            // 지도 에러 처리
-                            exception.printStackTrace()
+                        if (hasLocationPermission && isGpsEnabled) {
+                            getCurrentLocation(fusedLocationClient) { location ->
+                                currentLocation = location
+                                showMap = true
+
+                                kakaoMap?.let { map ->
+                                    map.moveCamera(
+                                        CameraUpdateFactory.newCenterPosition(
+                                            location,
+                                            15
+                                        )
+                                    )
+                                    addCurrentLocationMarker(map, location)
+                                }
+                            }
+                        } else if (!isGpsEnabled) {
+                            showMap = false
                         }
-                    }, object : KakaoMapReadyCallback() {
-                        override fun onMapReady(map: KakaoMap) {
-                            kakaoMap = map
-                            setupKakaoMap(map, currentLocation)
-                        }
-                    })
-                    mapView = this
+                    }
                 }
-            },
-            modifier = Modifier.fillMaxSize(),
-            onRelease = { view ->
-                view.finish()
-            }
-        )
 
-        // 🎯 상단 검색바 & 뒤로가기
+                else -> {}
+            }
+        }
+
+        lifecycleOwner.lifecycle.addObserver(observer)
+
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
+// 🔄 위치 주기적 갱신 (수정된 버전)
+    LaunchedEffect(hasLocationPermission, isGpsEnabled, kakaoMap) {
+        if (hasLocationPermission && isGpsEnabled && kakaoMap != null) {
+            // 🔥 한 번만 실행하고 필요할 때만 갱신
+            getCurrentLocation(fusedLocationClient) { location ->
+                currentLocation = location
+                addCurrentLocationMarker(kakaoMap, location)
+            }
+        }
+    }
+    DisposableEffect(Unit) {
+        onDispose {
+            try {
+                // 🗑️ 지도 리소스 정리
+                mapView?.finish()
+                mapView = null
+                kakaoMap = null
+
+                // 🔄 위치 업데이트 중단
+                fusedLocationClient.removeLocationUpdates(object : LocationCallback() {})
+
+                println("🧹 카카오맵 리소스 정리 완료")
+            } catch (e: Exception) {
+                println("❌ 리소스 정리 실패: ${e.message}")
+            }
+        }
+    }
+    Box(modifier = Modifier.fillMaxSize()) {
+        // 🗺️ 지도 표시 여부에 따른 조건부 렌더링
+        if (showMap) {
+            // 🗺️ 카카오 지도
+            AndroidView(
+                factory = { ctx ->
+                    MapView(ctx).apply {
+                        start(object : MapLifeCycleCallback() {
+                            override fun onMapDestroy() {
+                                // 지도 종료시 정리
+                            }
+
+                            override fun onMapError(exception: Exception) {
+                                // 지도 에러 처리
+                                exception.printStackTrace()
+                            }
+                        }, object : KakaoMapReadyCallback() {
+                            override fun onMapReady(map: KakaoMap) {
+                                kakaoMap = map
+                                setupKakaoMap(map, currentLocation)
+                            }
+                        })
+                        mapView = this
+                    }
+                },
+                modifier = Modifier.fillMaxSize(),
+                onRelease = { view ->
+                    view.finish()
+                }
+            )
+        } else {
+            // 🚫 위치 정보가 없을 때 표시할 화면
+            NoLocationScreen(
+                hasPermission = hasLocationPermission,
+                isGpsEnabled = isGpsEnabled,
+                onRequestPermission = {
+                    locationPermissionLauncher.launch(
+                        arrayOf(
+                            Manifest.permission.ACCESS_FINE_LOCATION,
+                            Manifest.permission.ACCESS_COARSE_LOCATION
+                        )
+                    )
+                },
+                onOpenLocationSettings = {
+                    val intent = Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)
+                    locationSettingsLauncher.launch(intent)
+                },
+                modifier = Modifier.fillMaxSize()
+            )
+        }
+
+        // 🎯 상단 검색바 & 뒤로가기 (항상 표시)
         TopSearchSection(
             searchQuery = searchQuery,
             onSearchQueryChange = { searchQuery = it },
@@ -195,64 +333,63 @@ fun KakaoMapRecommendScreen(
                 .zIndex(10f)
         )
 
-        // 🏷️ 카테고리 필터 (🔥 간격 조정: 90dp → 110dp)
-        CategoryFilterSection(
-            selectedCategory = selectedCategory,
-            onCategorySelected = {
-                selectedCategory = it
-                viewModel.filterByCategory(it)
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 110.dp) // 🔥 검색창과 더 아래로
-                .zIndex(9f)
-        )
-
-        // 🔥 핫플레이스 플로팅 카드들 (X 버튼 크기 줄임)
-        if (showHotPlaceCard) {
-            HotPlaceFloatingCards(
-                onDismiss = { showHotPlaceCard = false },
+        // 🏷️ 카테고리 필터 (지도가 표시될 때만)
+        if (showMap) {
+            CategoryFilterSection(
+                selectedCategory = selectedCategory,
+                onCategorySelected = {
+                    selectedCategory = it
+                    viewModel.filterByCategory(it)
+                },
                 modifier = Modifier
-                    .padding(
-                        start = 16.dp,
-                        end = 88.dp, // 🔥 플로팅 버튼 크기(56dp) + 여백(32dp)
-                        bottom = 16.dp // 🔥 플로팅 버튼과 같은 높이
-                    )
                     .fillMaxWidth()
-                    .align(Alignment.BottomStart)
-                    .zIndex(8f)
+                    .padding(top = 110.dp)
+                    .zIndex(9f)
+            )
+
+            // 🔥 핫플레이스 플로팅 카드들
+            if (showHotPlaceCard) {
+                HotPlaceFloatingCards(
+                    onDismiss = { showHotPlaceCard = false },
+                    modifier = Modifier
+                        .padding(
+                            start = 16.dp,
+                            end = 88.dp,
+                            bottom = 16.dp
+                        )
+                        .fillMaxWidth()
+                        .align(Alignment.BottomStart)
+                        .zIndex(8f)
+                )
+            }
+
+            // ➕ 개선된 플로팅 액션 버튼들 (지도 표시될 때만)
+            ModernMapSpeedDial(
+                onCurrentLocationPromoteClick = {
+                    currentLocation?.let { location ->
+                        println("현재 위치 홍보하기: ${location.latitude}, ${location.longitude}")
+                    }
+                },
+                onNearbyBusinessClick = {
+                    println("내 주변 사업체 찾기")
+                },
+                onLocationRefreshClick = {
+                    if (hasLocationPermission && isGpsEnabled) {
+                        getCurrentLocation(fusedLocationClient) { location ->
+                            currentLocation = location
+                            kakaoMap?.let { map ->
+                                map.moveCamera(CameraUpdateFactory.newCenterPosition(location, 15))
+                                addCurrentLocationMarker(map, location)
+                            }
+                        }
+                    }
+                },
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(16.dp)
+                    .zIndex(11f)
             )
         }
-
-        // ➕ 개선된 플로팅 액션 버튼들
-        ModernMapSpeedDial(
-            onCurrentLocationPromoteClick = {
-                // 🔥 현재 위치 홍보하기
-                currentLocation?.let { location ->
-                    // TODO: 현재 위치 기반 홍보 등록 화면으로 이동
-                    println("현재 위치 홍보하기: ${location.latitude}, ${location.longitude}")
-                }
-            },
-            onNearbyBusinessClick = {
-                // 🔥 내 주변 사업체 찾기
-                println("내 주변 사업체 찾기")
-            },
-            onLocationRefreshClick = {
-                // 🔥 위치 갱신
-                if (hasLocationPermission) {
-                    getCurrentLocation(fusedLocationClient) { location ->
-                        currentLocation = location
-                        kakaoMap?.moveCamera(
-                            CameraUpdateFactory.newCenterPosition(location, 15)
-                        )
-                    }
-                }
-            },
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(16.dp)
-                .zIndex(11f)
-        )
     }
 
     // 🔍 검색 기능
@@ -267,8 +404,8 @@ fun KakaoMapRecommendScreen(
     LaunchedEffect(selectedCategory, currentLocation) {
         kakaoMap?.let { map ->
             updateMapMarkers(map, selectedCategory, currentLocation)
-            
-            // 📍 현재 위치 마커 업데이트 (KakaoMapUtils 사용)
+
+            // 📍 현재 위치 마커 업데이트
             currentLocation?.let { location ->
                 KakaoMapUtils.updateCurrentLocationMarker(map, location)
             }
@@ -276,47 +413,7 @@ fun KakaoMapRecommendScreen(
     }
 }
 
-// 🔥 현재 위치 획득 함수 (갱신 가능)
-@Suppress("MissingPermission")
-private fun getCurrentLocation(
-    fusedLocationClient: FusedLocationProviderClient,
-    onLocationReceived: (LatLng) -> Unit
-) {
-    try {
-        // 최신 위치 요청
-        val locationRequest = LocationRequest.Builder(
-            Priority.PRIORITY_HIGH_ACCURACY,
-            5000L // 5초 간격
-        ).build()
-
-        fusedLocationClient.requestLocationUpdates(
-            locationRequest,
-            object : LocationCallback() {
-                override fun onLocationResult(locationResult: LocationResult) {
-                    locationResult.lastLocation?.let { location ->
-                        val latLng = LatLng.from(location.latitude, location.longitude)
-                        onLocationReceived(latLng)
-                        // 한 번만 받으면 되므로 콜백 제거
-                        fusedLocationClient.removeLocationUpdates(this)
-                    }
-                }
-            },
-            null
-        )
-
-        // 백업으로 마지막 알려진 위치도 시도
-        fusedLocationClient.lastLocation.addOnSuccessListener { location ->
-            location?.let {
-                val latLng = LatLng.from(it.latitude, it.longitude)
-                onLocationReceived(latLng)
-            }
-        }
-    } catch (e: SecurityException) {
-        // 권한이 없는 경우 기본 위치 사용
-        onLocationReceived(LatLng.from(37.5666805, 126.9784147))
-    }
-}
-
+// 🎯 상단 검색바 섹션
 @Composable
 fun TopSearchSection(
     searchQuery: String,
@@ -344,10 +441,7 @@ fun TopSearchSection(
             IconButton(
                 onClick = onNavigateBack,
                 modifier = Modifier
-                    .background(
-                        Color(0x20667eea),
-                        CircleShape
-                    )
+                    .background(Color(0x20667eea), CircleShape)
                     .size(40.dp)
             ) {
                 Icon(
@@ -366,9 +460,7 @@ fun TopSearchSection(
                     onValueChange = onSearchQueryChange,
                     modifier = Modifier.weight(1f),
                     placeholder = { Text("맛집, 카페 검색...") },
-                    leadingIcon = {
-                        Icon(Icons.Default.Search, contentDescription = null)
-                    },
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = Color(0xFF667eea),
                         cursorColor = Color(0xFF667eea)
@@ -376,22 +468,16 @@ fun TopSearchSection(
                     shape = RoundedCornerShape(12.dp)
                 )
             } else {
-                // 검색창 플레이스홀더 (클릭 가능)
                 Box(
                     modifier = Modifier
                         .weight(1f)
                         .height(56.dp)
-                        .background(
-                            Color(0xFFF5F5F5),
-                            RoundedCornerShape(12.dp)
-                        )
+                        .background(Color(0xFFF5F5F5), RoundedCornerShape(12.dp))
                         .clickable { onSearchToggle() }
                         .padding(horizontal = 16.dp),
                     contentAlignment = Alignment.CenterStart
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
                             Icons.Default.Search,
                             contentDescription = null,
@@ -408,14 +494,10 @@ fun TopSearchSection(
                 }
             }
 
-            // 검색/닫기 토글 버튼
             IconButton(
                 onClick = onSearchToggle,
                 modifier = Modifier
-                    .background(
-                        Color(0x20667eea),
-                        CircleShape
-                    )
+                    .background(Color(0x20667eea), CircleShape)
                     .size(40.dp)
             ) {
                 Icon(
@@ -428,6 +510,7 @@ fun TopSearchSection(
     }
 }
 
+// 🏷️ 카테고리 필터 섹션
 @Composable
 fun CategoryFilterSection(
     selectedCategory: String,
@@ -467,6 +550,7 @@ fun CategoryFilterSection(
     }
 }
 
+// 🔥 핫플레이스 플로팅 카드들
 @OptIn(ExperimentalAnimationApi::class)
 @Composable
 fun HotPlaceFloatingCards(
@@ -485,14 +569,13 @@ fun HotPlaceFloatingCards(
 
     LaunchedEffect(Unit) {
         while (true) {
-            delay(3000) // 3초마다 자동 스크롤
+            delay(3000)
             currentIndex = (currentIndex + 1) % hotPlaces.size
         }
     }
 
     Card(
-        modifier = modifier
-            .height(140.dp),
+        modifier = modifier.height(140.dp),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
             containerColor = Color.White.copy(alpha = 0.95f)
@@ -525,23 +608,19 @@ fun HotPlaceFloatingCards(
                         fontSize = 12.sp,
                         color = Color(0xFF718096),
                         modifier = Modifier
-                            .background(
-                                Color(0x20667eea),
-                                RoundedCornerShape(12.dp)
-                            )
+                            .background(Color(0x20667eea), RoundedCornerShape(12.dp))
                             .padding(horizontal = 8.dp, vertical = 4.dp)
                     )
 
-                    // 🔥 X 닫기 버튼 (크기 줄임, 원형 배경 제거)
                     IconButton(
                         onClick = onDismiss,
-                        modifier = Modifier.size(20.dp) // 🔥 24dp → 20dp
+                        modifier = Modifier.size(20.dp)
                     ) {
                         Icon(
                             Icons.Default.Close,
                             contentDescription = "핫플레이스 카드 닫기",
-                            tint = Color(0xFFFF4444), // 🔥 빨간색만 유지
-                            modifier = Modifier.size(16.dp) // 🔥 아이콘 크기도 줄임
+                            tint = Color(0xFFFF4444),
+                            modifier = Modifier.size(16.dp)
                         )
                     }
                 }
@@ -549,7 +628,6 @@ fun HotPlaceFloatingCards(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // 현재 핫플레이스 카드
             AnimatedContent(
                 targetState = hotPlaces[currentIndex],
                 transitionSpec = {
@@ -563,20 +641,17 @@ fun HotPlaceFloatingCards(
     }
 }
 
+// 🎴 핫플레이스 카드
 @Composable
 fun HotPlaceCard(hotPlace: HotPlace) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // 카테고리 아이콘
         Box(
             modifier = Modifier
                 .size(50.dp)
-                .background(
-                    Color(0xFF667eea).copy(alpha = 0.1f),
-                    CircleShape
-                ),
+                .background(Color(0xFF667eea).copy(alpha = 0.1f), CircleShape),
             contentAlignment = Alignment.Center
         ) {
             Text(
@@ -599,22 +674,14 @@ fun HotPlaceCard(hotPlace: HotPlace) {
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Text(
-                    text = hotPlace.rating,
-                    fontSize = 12.sp,
-                    color = Color(0xFF718096)
-                )
+                Text(text = hotPlace.rating, fontSize = 12.sp, color = Color(0xFF718096))
                 Text(
                     text = hotPlace.promotion,
                     fontSize = 12.sp,
                     color = Color(0xFFE53E3E),
                     fontWeight = FontWeight.Medium
                 )
-                Text(
-                    text = hotPlace.distance,
-                    fontSize = 12.sp,
-                    color = Color(0xFF718096)
-                )
+                Text(text = hotPlace.distance, fontSize = 12.sp, color = Color(0xFF718096))
             }
         }
 
@@ -631,7 +698,7 @@ fun HotPlaceCard(hotPlace: HotPlace) {
     }
 }
 
-// 🆕 개선된 지도용 SpeedDial
+// ➕ 개선된 지도용 SpeedDial
 @Composable
 fun ModernMapSpeedDial(
     onCurrentLocationPromoteClick: () -> Unit,
@@ -646,7 +713,6 @@ fun ModernMapSpeedDial(
         horizontalAlignment = Alignment.End,
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        // 확장된 옵션들
         AnimatedVisibility(
             visible = isExpanded,
             enter = slideInVertically() + fadeIn(),
@@ -656,33 +722,30 @@ fun ModernMapSpeedDial(
                 horizontalAlignment = Alignment.End,
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // 현재 위치 홍보하기
                 MapSpeedDialOption(
-                    icon = Icons.Default.LocationOn, // 홍보 아이콘
+                    icon = Icons.Default.LocationOn,
                     label = "현재 위치 홍보",
-                    backgroundColor = Color(0xFFFF6B6B), // 빨간색
+                    backgroundColor = Color(0xFFFF6B6B),
                     onClick = {
                         onCurrentLocationPromoteClick()
                         isExpanded = false
                     }
                 )
 
-                // 내 주변 사업체 찾기
                 MapSpeedDialOption(
                     icon = Icons.Default.Search,
                     label = "주변 사업체",
-                    backgroundColor = Color(0xFF4ECDC4), // 청록색
+                    backgroundColor = Color(0xFF4ECDC4),
                     onClick = {
                         onNearbyBusinessClick()
                         isExpanded = false
                     }
                 )
 
-                // 위치 갱신
                 MapSpeedDialOption(
                     icon = Icons.Default.Refresh,
                     label = "위치 갱신",
-                    backgroundColor = Color(0xFF45B7D1), // 파란색
+                    backgroundColor = Color(0xFF45B7D1),
                     onClick = {
                         onLocationRefreshClick()
                         isExpanded = false
@@ -691,7 +754,6 @@ fun ModernMapSpeedDial(
             }
         }
 
-        // 메인 플로팅 버튼
         FloatingActionButton(
             onClick = { isExpanded = !isExpanded },
             containerColor = Color(0xFF667eea),
@@ -714,6 +776,7 @@ fun ModernMapSpeedDial(
     }
 }
 
+// 🎛️ SpeedDial 옵션
 @Composable
 fun MapSpeedDialOption(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
@@ -725,7 +788,6 @@ fun MapSpeedDialOption(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        // 라벨
         Card(
             colors = CardDefaults.cardColors(
                 containerColor = Color.Black.copy(alpha = 0.8f)
@@ -736,14 +798,10 @@ fun MapSpeedDialOption(
                 text = label,
                 color = Color.White,
                 fontSize = 12.sp,
-                modifier = Modifier.padding(
-                    horizontal = 12.dp,
-                    vertical = 6.dp
-                )
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
             )
         }
 
-        // 버튼
         SmallFloatingActionButton(
             onClick = onClick,
             containerColor = backgroundColor,
@@ -758,63 +816,227 @@ fun MapSpeedDialOption(
     }
 }
 
+// 🚫 위치 정보 없을 때 표시 화면
+@Composable
+fun NoLocationScreen(
+    hasPermission: Boolean,
+    isGpsEnabled: Boolean,
+    onRequestPermission: () -> Unit,
+    onOpenLocationSettings: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(
+                        Color(0xFF667eea),
+                        Color(0xFF764ba2)
+                    )
+                )
+            )
+            .padding(32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        // 🌍 위치 아이콘
+        Icon(
+            imageVector = Icons.Default.LocationOn,
+            contentDescription = null,
+            modifier = Modifier.size(120.dp),
+            tint = Color.White.copy(alpha = 0.8f)
+        )
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // 📱 상태에 따른 메시지
+        val (title, description, buttonText, action) = when {
+            !hasPermission -> {
+                Quadruple(
+                    "위치 권한이 필요해요",
+                    "주변 맛집과 카페를 찾기 위해\n위치 권한을 허용해주세요",
+                    "위치 권한 허용",
+                    onRequestPermission
+                )
+            }
+
+            !isGpsEnabled -> {
+                Quadruple(
+                    "GPS를 켜주세요",
+                    "정확한 위치를 확인하기 위해\nGPS를 활성화해주세요",
+                    "GPS 설정 열기",
+                    onOpenLocationSettings
+                )
+            }
+
+            else -> {
+                Quadruple(
+                    "위치를 확인하는 중...",
+                    "잠시만 기다려주세요",
+                    "",
+                    {}
+                )
+            }
+        }
+
+        Text(
+            text = title,
+            fontSize = 24.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color.White,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Text(
+            text = description,
+            fontSize = 16.sp,
+            color = Color.White.copy(alpha = 0.9f),
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            lineHeight = 24.sp
+        )
+
+        if (buttonText.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(32.dp))
+
+            Button(
+                onClick = action,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color.White,
+                    contentColor = Color(0xFF667eea)
+                ),
+                shape = RoundedCornerShape(28.dp)
+            ) {
+                Text(
+                    text = buttonText,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+    }
+}
+
+// 🔥 현재 위치 획득 함수 (개선된 버전)
+@Suppress("MissingPermission")
+private fun getCurrentLocation(
+    fusedLocationClient: FusedLocationProviderClient,
+    onLocationReceived: (LatLng) -> Unit
+) {
+    try {
+        // 🎯 고정밀 위치 요청
+        val locationRequest = LocationRequest.Builder(
+            Priority.PRIORITY_HIGH_ACCURACY,
+            5000L
+        ).apply {
+            setMinUpdateDistanceMeters(10f) // 10미터 이상 이동시에만 업데이트
+            setMaxUpdateDelayMillis(10000L) // 최대 10초 지연
+        }.build()
+
+        fusedLocationClient.requestLocationUpdates(
+            locationRequest,
+            object : LocationCallback() {
+                override fun onLocationResult(locationResult: LocationResult) {
+                    locationResult.lastLocation?.let { location ->
+                        val latLng = LatLng.from(location.latitude, location.longitude)
+                        onLocationReceived(latLng)
+                        // 한 번만 받으면 되므로 콜백 제거
+                        fusedLocationClient.removeLocationUpdates(this)
+                    }
+                }
+            },
+            null
+        )
+
+        // 💾 백업으로 마지막 알려진 위치도 시도
+        fusedLocationClient.lastLocation.addOnSuccessListener { location ->
+            location?.let {
+                val latLng = LatLng.from(it.latitude, it.longitude)
+                onLocationReceived(latLng)
+            }
+        }
+    } catch (e: SecurityException) {
+        println("❌ 위치 획득 실패: ${e.message}")
+    }
+}
+
+// 📍 GPS 서비스 활성화 상태 체크
+private fun isLocationServiceEnabled(context: Context): Boolean {
+    val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+    return locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER) ||
+            locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)
+}
+
+// 🔧 GPS 설정 화면으로 유도하는 함수
+private fun showLocationSettingsDialog(context: Context) {
+    println("⚠️ GPS가 비활성화되어 있습니다. 설정에서 위치 서비스를 켜주세요.")
+}
+
 // 🗺️ 카카오 지도 설정 (현재 위치 적용 및 표시)
 private fun setupKakaoMap(kakaoMap: KakaoMap, currentLocation: LatLng?) {
     // 📍 현재 위치 또는 기본 위치 설정
     val centerLocation = currentLocation ?: LatLng.from(37.5666805, 126.9784147)
+    kakaoMap.moveCamera(CameraUpdateFactory.newCenterPosition(centerLocation, 8))
 
-    // 📷 카메라 위치 이동
-    kakaoMap.moveCamera(CameraUpdateFactory.newCenterPosition(centerLocation, 15))
+    // 🏷️ 샘플 마커들 먼저 추가
+    addSampleKakaoMarkers(kakaoMap)
 
     // 📍 현재 위치 마커 추가 (위치가 있을 때만)
     currentLocation?.let { location ->
         addCurrentLocationMarker(kakaoMap, location)
-        println("🎯 지도 초기화: 현재 위치로 설정 완료")
-    } ?: run {
-        println("⚠️ 지도 초기화: 기본 위치로 설정")
+        println("🎯 지도 초기화: 현재 위치 마커 추가 완료")
     }
-
-    // 🏷️ 샘플 마커들 추가
-    addSampleKakaoMarkers(kakaoMap)
 }
-
-// 📍 현재 위치 마커 추가 함수 (수정된 버전)
-private fun addCurrentLocationMarker(kakaoMap: KakaoMap, currentLocation: LatLng) {
+// 📍 중복 추가 방지
+private fun addCurrentLocationMarker(kakaoMap: KakaoMap?, currentLocation: LatLng) {
     try {
-        // 🗑️ 기존 마커 제거 (중요!)
-        removeCurrentLocationMarker(kakaoMap)
+        val labelLayer = kakaoMap?.labelManager?.layer
 
-        val labelLayer = kakaoMap.labelManager?.layer
+        // 🔍 이미 있는지 확인
+        val existingMarker = labelLayer?.getAllLabels()?.find {
+            it.tag == "current_location_marker"
+        }
 
-        // 🏷️ 현재 위치용 라벨 스타일 생성
-        val styles = kakaoMap.labelManager
-            ?.addLabelStyles(LabelStyles.from(LabelStyle.from(R.drawable.red_dot_11)))
+        if (existingMarker != null) {
+            println("⚠️ 현재 위치 마커가 이미 존재함 - 추가 중단")
+            return
+        }
+
+        val styles = kakaoMap?.labelManager
+            ?.addLabelStyles(LabelStyles.from(LabelStyle.from(android.R.drawable.ic_menu_mylocation)))
 
         styles?.let { labelStyles ->
-            // 🏷️ 라벨 옵션 설정 (고유 태그 사용)
             val options = LabelOptions.from(currentLocation)
                 .setStyles(labelStyles)
-                .setTag("current_location_marker") // 🏷️ 현재 위치 마커 식별용 고유 태그
+                .setTag("current_location_marker")
 
-            // 📍 라벨 추가
             labelLayer?.addLabel(options)
-            println("✅ 현재 위치 마커 추가 완료: ${currentLocation.latitude}, ${currentLocation.longitude}")
+            println("✅ 현재 위치 마커 추가 성공")
         }
+
     } catch (e: Exception) {
         println("❌ 현재 위치 마커 추가 실패: ${e.message}")
     }
 }
 
-// 🗑️ 현재 위치 마커만 제거하는 함수 (새로 추가)
+// 🗑️ 현재 위치 마커만 제거하는 함수
 private fun removeCurrentLocationMarker(kakaoMap: KakaoMap) {
     try {
         val labelLayer = kakaoMap.labelManager?.layer
-        val currentLocationLabel = labelLayer?.getLabel("current_location_marker")
 
-        currentLocationLabel?.let { label ->
-            labelLayer.remove(label)
-            println("🗑️ 기존 현재 위치 마커 제거 완료")
+        // 🔍 모든 라벨을 검사해서 current_location_marker 찾기
+        labelLayer?.getAllLabels()?.forEach { label ->
+            if (label.tag == "current_location_marker") {
+                labelLayer.remove(label)
+                println("🗑️ 현재 위치 마커 제거 성공")
+                return
+            }
         }
+
     } catch (e: Exception) {
         println("❌ 현재 위치 마커 제거 실패: ${e.message}")
     }
@@ -868,258 +1090,13 @@ private fun getCategoryEmoji(category: String): String {
     }
 }
 
-// 🏷️ 데이터 클래스 (동일)
-// 📍 GPS 마커 컴포넌트 (카카오맵용)
-@Composable
-fun KakaoMapGpsMarker(
-    modifier: Modifier = Modifier,
-    size: Dp = 24.dp,
-    isAnimated: Boolean = true,
-    accuracy: Float = 10f // GPS 정확도
-) {
-    // 🌊 맥동 애니메이션
-    val infiniteTransition = rememberInfiniteTransition(label = "gps_pulse")
-    val pulseScale by infiniteTransition.animateFloat(
-        initialValue = 1f,
-        targetValue = if (isAnimated) 1.4f else 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1200, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "pulse_scale"
-    )
-    
-    val pulseAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.8f,
-        targetValue = if (isAnimated) 0.1f else 0.8f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1200, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "pulse_alpha"
-    )
-
-    Canvas(
-        modifier = modifier.size(size)
-    ) {
-        val center = Offset(size.toPx() / 2, size.toPx() / 2)
-        val baseRadius = size.toPx() / 3.5f
-
-        // 🌊 정확도 범위 표시 (맥동 효과)
-        if (isAnimated) {
-            // 외곽 정확도 원 (실제 GPS 정확도 기반)
-            val accuracyRadius = baseRadius * (accuracy / 10f).coerceIn(1f, 3f)
-            drawCircle(
-                color = Color(0xFF2196F3).copy(alpha = pulseAlpha * 0.2f),
-                radius = accuracyRadius * pulseScale,
-                center = center
-            )
-            
-            // 중간 범위
-            drawCircle(
-                color = Color(0xFF2196F3).copy(alpha = pulseAlpha * 0.4f),
-                radius = baseRadius * pulseScale * 1.6f,
-                center = center
-            )
-        }
-
-        // 🔷 메인 외곽 테두리 (진한 파란색)
-        drawCircle(
-            color = Color(0xFF1565C0),
-            radius = baseRadius * 1.3f,
-            center = center
-        )
-
-        // ⚪ 흰색 베이스 (대비 강화)
-        drawCircle(
-            color = Color.White,
-            radius = baseRadius * 1.15f,
-            center = center
-        )
-
-        // 🔵 메인 GPS 도트
-        drawCircle(
-            color = Color(0xFF2196F3),
-            radius = baseRadius,
-            center = center
-        )
-
-        // ✨ 중심 하이라이트
-        drawCircle(
-            color = Color(0xFF64B5F6),
-            radius = baseRadius * 0.65f,
-            center = center
-        )
-
-        // 💎 정확한 위치점
-        drawCircle(
-            color = Color(0xFF0D47A1),
-            radius = baseRadius * 0.3f,
-            center = center
-        )
-    }
-}
-
-// 🎨 GPS 정확도에 따른 동적 마커
-@Composable
-fun AdaptiveKakaoGpsMarker(
-    accuracy: Float, // GPS 정확도 (미터)
-    modifier: Modifier = Modifier
-) {
-    val (size, animated) = when {
-        accuracy < 10f -> 20.dp to true     // 🎩 매우 정확 - 작고 애니메이션
-        accuracy < 50f -> 24.dp to true     // 📍 보통 - 기본 크기
-        accuracy < 100f -> 28.dp to false   // ⚠️ 부정확 - 크고 정적
-        else -> 32.dp to false              // 🚨 매우 부정확 - 가장 크게
-    }
-    
-    KakaoMapGpsMarker(
-        modifier = modifier,
-        size = size,
-        isAnimated = animated,
-        accuracy = accuracy
-    )
-}
-// 🗺️ 라벨 관리 유틸리티 함수들
-object KakaoMapUtils {
-
-    // 🗑️ 라벨 제거 함수 (개선된 버전)
-    fun removeLabel(kakaoMap: KakaoMap, labelTag: String) {
-        try {
-            val labelLayer = kakaoMap.labelManager?.layer
-            val labelToRemove = labelLayer?.getLabel(labelTag)
-
-            labelToRemove?.let { label ->
-                labelLayer.remove(label)
-                println("✅ 라벨 제거 성공: $labelTag")
-            } ?: run {
-                println("⚠️ 제거할 라벨을 찾지 못함: $labelTag")
-            }
-        } catch (e: Exception) {
-            println("❌ 라벨 제거 실패: ${e.message}")
-        }
-    }
-
-    // 🗺️ 전체 라벨 제거 (현재 위치 마커는 제외하고 싶다면 로직 추가 필요)
-    fun removeAllLabels(kakaoMap: KakaoMap) {
-        try {
-            val labelLayer = kakaoMap.labelManager?.layer
-            labelLayer?.removeAll()
-            println("모든 라벨 제거 성공.")
-        } catch (e: Exception) {
-            println("전체 라벨 제거 실패: ${e.message}")
-        }
-    }
-
-    // 📍 현재 위치 마커 업데이트 (개선된 버전)
-    fun updateCurrentLocationMarker(kakaoMap: KakaoMap, currentLocation: LatLng) {
-        // 기존 현재 위치 마커 제거
-        removeLabel(kakaoMap, "current_location_marker")
-
-        // 새로운 현재 위치 마커 추가
-        addCurrentLocationMarker(kakaoMap, currentLocation)
-    }
-
-    // 📍 카테고리별 마커 필터링 (현재 위치 보존)
-    fun updateMarkersByCategory(kakaoMap: KakaoMap, category: String, currentLocation: LatLng?) {
-        try {
-            // 🔍 현재 위치 마커 상태 체크
-            val hasCurrentLocationMarker = kakaoMap.labelManager?.layer?.getLabel("current_location_marker") != null
-
-            // 🗑️ 카테고리 마커들만 제거 (현재 위치 마커는 보존)
-            removeCategoryMarkers(kakaoMap)
-
-            // 🎨 카테고리에 따른 새 마커 추가
-            when (category) {
-                "전체" -> addAllCategoryMarkers(kakaoMap)
-                "맛집" -> addRestaurantMarkers(kakaoMap)
-                "카페" -> addCafeMarkers(kakaoMap)
-                "편의점" -> addConvenienceStoreMarkers(kakaoMap)
-                else -> addAllCategoryMarkers(kakaoMap)
-            }
-
-            // 📍 현재 위치 마커가 있었다면 다시 추가
-            if (currentLocation != null && !hasCurrentLocationMarker) {
-                addCurrentLocationMarker(kakaoMap, currentLocation)
-            }
-
-        } catch (e: Exception) {
-            println("❌ 카테고리별 마커 업데이트 실패: ${e.message}")
-        }
-    }
-    // 🗑️ 카테고리 마커들만 제거하는 함수 (새로 추가)
-    private fun removeCategoryMarkers(kakaoMap: KakaoMap) {
-        val categoriesToRemove = listOf("restaurant", "cafe", "convenience")
-
-        categoriesToRemove.forEach { category ->
-            // 각 카테고리별로 인덱스 기반 라벨들 제거
-            for (i in 0..10) { // 최대 10개까지 체크
-                removeLabel(kakaoMap, "${category}_$i")
-            }
-        }
-    }
-    // 🍽️ 맛집 마커들
-    private fun addRestaurantMarkers(kakaoMap: KakaoMap) {
-        val restaurants = listOf(
-            LatLng.from(37.5656805, 126.9794147) to "돈까스 맛집 우동이",
-            LatLng.from(37.5646805, 126.9804147) to "한식 집 백주마당",
-            LatLng.from(37.5636805, 126.9814147) to "중국집 새별루"
-        )
-        addMarkersToMap(kakaoMap, restaurants, "restaurant")
-    }
-
-    // ☕ 카페 마커들
-    private fun addCafeMarkers(kakaoMap: KakaoMap) {
-        val cafes = listOf(
-            LatLng.from(37.5666805, 126.9784147) to "브런치 카페 모모",
-            LatLng.from(37.5676805, 126.9774147) to "디저트 카페 스윗",
-            LatLng.from(37.5686805, 126.9764147) to "아메리카노 카페"
-        )
-        addMarkersToMap(kakaoMap, cafes, "cafe")
-    }
-
-    // 🏪 편의점 마커들
-    private fun addConvenienceStoreMarkers(kakaoMap: KakaoMap) {
-        val stores = listOf(
-            LatLng.from(37.5696805, 126.9754147) to "CU 강남점",
-            LatLng.from(37.5706805, 126.9744147) to "GS25 역삼점",
-            LatLng.from(37.5716805, 126.9734147) to "세븐일레븐 대학로점"
-        )
-        addMarkersToMap(kakaoMap, stores, "convenience")
-    }
-
-    // 🎯 전체 카테고리 마커들
-    private fun addAllCategoryMarkers(kakaoMap: KakaoMap) {
-        addRestaurantMarkers(kakaoMap)
-        addCafeMarkers(kakaoMap)
-        addConvenienceStoreMarkers(kakaoMap)
-    }
-
-    // 📍 마커 추가 유틸리티
-    private fun addMarkersToMap(kakaoMap: KakaoMap, locations: List<Pair<LatLng, String>>, categoryTag: String) {
-        val labelLayer = kakaoMap.labelManager?.layer
-
-        locations.forEachIndexed { index, (position, title) ->
-            try {
-                // 동일한 태그가 이미 있다면 추가하지 않음 (중복 방지)
-                if (labelLayer?.getLabel("${categoryTag}_$index") != null) return@forEachIndexed
-
-                val styles = kakaoMap.labelManager
-                    ?.addLabelStyles(LabelStyles.from(LabelStyle.from(R.drawable.red_dot_11)))
-
-                styles?.let { labelStyles ->
-                    val options = LabelOptions.from(position)
-                        .setStyles(labelStyles)
-                        .setTag("${categoryTag}_$index") // 고유 태그 설정
-
-                    labelLayer?.addLabel(options)
-                }
-            } catch (e: Exception) {
-                println("마커 추가 실패 ($title): ${e.message}")
-            }
-        }
-    }
-}
+// 🏷️ 유틸리티 데이터 클래스
+data class Quadruple<A, B, C, D>(
+    val first: A,
+    val second: B,
+    val third: C,
+    val fourth: D
+)
 
 data class HotPlace(
     val id: String,

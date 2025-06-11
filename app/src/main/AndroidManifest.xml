@@ -27,7 +27,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Kotlin_amateur"
         android:usesCleartextTraffic="true"
-
+        android:largeHeap="false"
         tools:targetApi="31">   <!-- ndroid:usesCleartextTraffic="true" 개발용 후에 삭제-->
 
         <!-- 🔥 EmojiCompat 비활성화 -->
