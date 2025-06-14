@@ -70,60 +70,66 @@ android {
     }
 }
 dependencies {
-    // 🔥 메모리 누수 감지만 debug에서
-    debugImplementation("com.squareup.leakcanary:leakcanary-android:2.12")
-
-    // 🗺️ 카카오 지도만 유지
-    implementation("com.kakao.maps.open:android:2.12.8")
-    implementation("com.google.android.gms:play-services-location:21.0.1")
-
-    // 🔐 보안 관련 최소한만
-    implementation("androidx.datastore:datastore-preferences:1.0.0")
-    implementation("androidx.security:security-crypto:1.1.0-alpha06")
-
-    // ✅ Hilt (필수)
-    implementation("com.google.dagger:hilt-android:2.48")
-    kapt("com.google.dagger:hilt-compiler:2.48")
-    implementation("androidx.hilt:hilt-navigation-compose:1.1.0")
-
-    // 🔥 Firebase 최소화 (Analytics 제거)
-    implementation(platform("com.google.firebase:firebase-bom:33.1.0"))
-    implementation("com.google.firebase:firebase-auth") // Auth만 유지
-
-    // ✅ Google 로그인 - 수정된 부분! 🎯
-    implementation("com.google.android.gms:play-services-auth:21.2.0") // 🔥 최신 버전
-    implementation("com.google.android.gms:play-services-base:18.5.0") // 🔥 추가!
-    implementation("com.google.android.gms:play-services-tasks:18.2.0") // 🔥 추가!
-
-    // ✅ 안드로이드 기본 (최소화)
-    implementation("androidx.core:core-ktx:1.13.1")
-    implementation("androidx.appcompat:appcompat:1.7.0")
-    implementation("androidx.constraintlayout:constraintlayout:2.1.4")
-    implementation("com.google.android.material:material:1.12.0")
-    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.6")
-    implementation("androidx.activity:activity-ktx:1.8.2")
-
-    // ✅ Navigation
-    implementation("androidx.navigation:navigation-fragment-ktx:2.8.3")
-    implementation("androidx.navigation:navigation-ui-ktx:2.8.3")
-    implementation("androidx.navigation:navigation-compose:2.8.3")
-
-    // 🔥 네트워크 최적화 (OkHttp 캐시 크기 제한)
-    implementation("com.squareup.retrofit2:retrofit:2.9.0")
-    implementation("com.squareup.retrofit2:converter-gson:2.9.0")
-    implementation("com.squareup.okhttp3:okhttp:4.12.0")
-
-    // 🔥 이미지 라이브러리 통합 (Coil만 사용)
-    implementation("io.coil-kt:coil-compose:2.5.0")
-
-    // ✅ Compose (최소한만)
-    implementation("androidx.activity:activity-compose:1.8.2")
-    implementation(platform("androidx.compose:compose-bom:2024.12.01"))
-    implementation("androidx.compose.ui:ui")
-    implementation("androidx.compose.ui:ui-tooling-preview")
-    implementation("androidx.compose.material3:material3")
-    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.6")
-    implementation("androidx.compose.foundation:foundation")
-
-    debugImplementation("androidx.compose.ui:ui-tooling")
+    // 🔥 핵심! Fragment 의존성 추가
+    implementation(libs.androidx.fragment.ktx)
+    
+    // ✅ 기본 AndroidX 라이브러리들 (libs 방식으로 통일)
+    implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.appcompat)
+    implementation(libs.androidx.constraintlayout)
+    implementation(libs.material)
+    implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.androidx.activity)
+    
+    // ✅ Navigation (libs 방식)
+    implementation(libs.androidx.navigation.fragment)
+    implementation(libs.androidx.navigation.ui)
+    implementation(libs.androidx.navigation.compose)
+    
+    // ✅ Hilt 의존성 (이미 libs 방식)
+    implementation(libs.hilt.android)
+    kapt(libs.hilt.compiler)
+    implementation(libs.hilt.navigation.compose)
+    
+    // ✅ Compose BOM & Core (libs 방식)
+    implementation(platform(libs.androidx.compose.bom))
+    implementation(libs.androidx.compose.ui)
+    implementation(libs.androidx.compose.ui.tooling.preview)
+    implementation(libs.androidx.compose.material3)
+    implementation(libs.androidx.compose.foundation)
+    implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
+    debugImplementation(libs.androidx.compose.ui.tooling)
+    
+    // 🔥 Material Icons 추가 (핵심!)
+    implementation(libs.compose.material.icons.core)
+    implementation(libs.compose.material.icons.extended)
+    
+    // ✅ Network & Image (libs 방식)
+    implementation(libs.retrofit)
+    implementation(libs.retrofit.converter.gson)
+    implementation(libs.okhttp)
+    implementation(libs.coil.compose)
+    
+    // ✅ Firebase & Google Services (libs 방식)
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.auth)
+    implementation(libs.play.services.auth)
+    implementation(libs.play.services.base)
+    implementation(libs.play.services.tasks)
+    implementation(libs.play.services.location)
+    
+    // ✅ 기타 라이브러리들 (libs 방식)
+    implementation(libs.kakao.maps)
+    implementation(libs.androidx.paging.compose)
+    implementation(libs.androidx.datastore.preferences)
+    implementation(libs.androidx.security.crypto)
+    
+    // 🔥 메모리 누수 감지 (Debug만)
+    debugImplementation(libs.leakcanary.android)
+    
+    // ✅ 테스트 라이브러리들
+    testImplementation(libs.junit)
+    androidTestImplementation(libs.androidx.junit)
+    androidTestImplementation(libs.androidx.espresso.core)
 }

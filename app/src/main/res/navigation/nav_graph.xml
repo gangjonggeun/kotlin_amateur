@@ -11,7 +11,7 @@
         android:label="홈">
         <action
             android:id="@+id/action_home_to_addPost"
-            app:destination="@id/addPostFragment" />
+            app:destination="@id/floatingAddFragment" />
         <action
             android:id="@+id/action_home_to_localPromo"
             app:destination="@id/localPromoFragment" />
@@ -29,7 +29,7 @@
         android:layout_height="match_parent" />
 
     <fragment
-        android:id="@+id/addPostFragment"
+        android:id="@+id/floatingAddFragment"
         android:name="com.example.kotlin_amateur.post.FloatingAddFragment"
         android:label="글 추가" />
 

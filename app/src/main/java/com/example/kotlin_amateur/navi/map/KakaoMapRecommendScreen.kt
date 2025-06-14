@@ -980,7 +980,7 @@ private fun showLocationSettingsDialog(context: Context) {
 private fun setupKakaoMap(kakaoMap: KakaoMap, currentLocation: LatLng?) {
     // 📍 현재 위치 또는 기본 위치 설정
     val centerLocation = currentLocation ?: LatLng.from(37.5666805, 126.9784147)
-    kakaoMap.moveCamera(CameraUpdateFactory.newCenterPosition(centerLocation, 8))
+    kakaoMap.moveCamera(CameraUpdateFactory.newCenterPosition(centerLocation, 18))
 
     // 🏷️ 샘플 마커들 먼저 추가
     addSampleKakaoMarkers(kakaoMap)

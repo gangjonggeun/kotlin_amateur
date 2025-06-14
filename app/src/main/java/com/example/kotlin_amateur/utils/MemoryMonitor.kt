@@ -52,7 +52,7 @@ object MemoryMonitor {
      */
     fun forceGC() {
         try {
-            System.gc()
+//            System.gc()
             System.runFinalization()
             Log.d("MemoryMonitor", "🧹 강제 가비지 컬렉션 실행")
         } catch (e: Exception) {

@@ -15,7 +15,7 @@ class AuthInterceptor(private val context: Context) : Interceptor {
         var request = chain.request()
 
         runBlocking {
-            val (accessToken, refreshToken) = TokenStore.loadTokens(context)
+            val (accessToken, refreshToken) = TokenStore.getTokens(context)
             var token = accessToken
 
             if (token.isNullOrBlank()) return@runBlocking

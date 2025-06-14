@@ -2,20 +2,22 @@ package com.example.kotlin_amateur.viewmodel
 
 import android.app.Application
 import android.util.Log
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.paging.Pager
+import androidx.paging.PagingConfig
+import androidx.paging.PagingData
+import androidx.paging.cachedIn
 import com.example.kotlin_amateur.core.auth.TokenStore
-import com.example.kotlin_amateur.exception.TokenNotFoundException
 import com.example.kotlin_amateur.remote.response.PostListResponse
 import com.example.kotlin_amateur.repository.PostRepository
+import com.example.kotlin_amateur.post.PostPagingSource
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -25,115 +27,41 @@ class HomeViewModel @Inject constructor(
     private val application: Application
 ) : ViewModel() {
 
-    // 🔥 기존 LiveData
-    private val _dataList = MutableLiveData<List<PostListResponse>>()
-    val dataList: LiveData<List<PostListResponse>> get() = _dataList
-
-    private val _isLoading = MutableLiveData<Boolean>()
-    val isLoading: LiveData<Boolean> get() = _isLoading
-
-    private val _errorMessage = MutableLiveData<String?>()
-    val errorMessage: LiveData<String?> get() = _errorMessage
-
-    // 🆕 StateFlow 추가 (Compose용)
-    private val _posts = MutableStateFlow<List<PostListResponse>>(emptyList())
-    val posts: StateFlow<List<PostListResponse>> = _posts.asStateFlow()
-
-    private val _isLoadingFlow = MutableStateFlow(false)
-    val isLoadingFlow: StateFlow<Boolean> = _isLoadingFlow.asStateFlow()
-
-    private val _errorMessageFlow = MutableStateFlow<String?>(null)
-    val errorMessageFlow: StateFlow<String?> = _errorMessageFlow.asStateFlow()
-
-    // 🆕 검색 기능
+    // 🔍 검색어 상태
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
 
-    // 🆕 필터된 게시글
-    val filteredPosts: StateFlow<List<PostListResponse>> = combine(
-        _posts,
-        _searchQuery
-    ) { posts, query ->
-        if (query.isBlank()) {
-            posts
-        } else {
-            posts.filter { post ->
-                post.postTitle.contains(query, ignoreCase = true) ||
-                        post.postContent.contains(query, ignoreCase = true) ||
-                        post.authorNickname.contains(query, ignoreCase = true)
-            }
+    // 🔄 무한 스크롤 Paging 데이터
+    val postsPagingFlow: Flow<PagingData<PostListResponse>> = 
+        searchQuery.flatMapLatest { query ->
+            Pager(
+                config = PagingConfig(
+                    pageSize = 20,              // 한 번에 20개씩 로딩
+                    prefetchDistance = 5,       // 5개 남았을 때 미리 로딩
+                    enablePlaceholders = false  // 플레이스홀더 비활성화 (메모리 절약)
+                ),
+                pagingSourceFactory = {
+                    PostPagingSource(
+                        context = application.applicationContext,
+                        postRepository = postRepository,
+                        query = query.ifEmpty { null }
+                    )
+                }
+            ).flow.cachedIn(viewModelScope) // ✅ 메모리에 캐시 (화면 회전 등에서 유지)
         }
-    }.stateIn(
-        scope = viewModelScope,
-        started = kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5000),
-        initialValue = emptyList()
-    )
 
-    init {
-        loadDataFromServer()
-    }
-
-    // 🆕 검색어 업데이트
+    // 🔍 검색어 업데이트
     fun updateSearchQuery(query: String) {
         _searchQuery.value = query
     }
-
-    // 🆕 검색어 클리어
-    fun clearSearch() {
-        _searchQuery.value = ""
-    }
-
-    fun loadDataFromServer() {
-        viewModelScope.launch {
-            _isLoading.value = true
-            _isLoadingFlow.value = true
-            _errorMessage.value = null
-            _errorMessageFlow.value = null
-
-            try {
-                val accessToken = TokenStore.getAccessToken(application.applicationContext)
-                    ?: throw TokenNotFoundException()
-
-                val response = postRepository.getPostsList(accessToken)
-
-                if (response.isSuccessful) {
-                    val postList = response.body() ?: emptyList()
-
-                    // 🔥 이미지 URL 로깅 추가
-                    Log.d("HomeViewModel", "데이터 로드 성공: ${postList.size}개 게시글")
-                    postList.forEachIndexed { index, post ->
-                        Log.d("HomeViewModel", "[게시글 $index] ID: ${post.postId}")
-                        Log.d("HomeViewModel", "[게시글 $index] 제목: ${post.postTitle}")
-                        Log.d("HomeViewModel", "[게시글 $index] 이미지 존재: ${post.hasImage}")
-                        Log.d("HomeViewModel", "[게시글 $index] 이미지 URL 리스트: ${post.imageUrls}")
-                        Log.d("HomeViewModel", "[게시글 $index] 대표 이미지: ${post.representativeImageUrl}")
-                        Log.d("HomeViewModel", "[게시글 $index] 프로필 이미지: ${post.authorProfileImageUrl}")
-                        Log.d("HomeViewModel", "---")
-                    }
-
-                    // 🔥 LiveData와 StateFlow 둘 다 업데이트
-                    _dataList.value = postList
-                    _posts.value = postList
-                } else {
-                    val errorMsg = "서버 응답 실패: ${response.code()}"
-                    _errorMessage.value = errorMsg
-                    _errorMessageFlow.value = errorMsg
-                    Log.e("HomeViewModel", errorMsg)
-                }
-            } catch (e: Exception) {
-                val errorMsg = "네트워크 오류 발생: ${e.message}"
-                _errorMessage.value = errorMsg
-                _errorMessageFlow.value = errorMsg
-                Log.e("HomeViewModel", errorMsg, e)
-            } finally {
-                _isLoading.value = false
-                _isLoadingFlow.value = false
-            }
-        }
+    
+    // 🔄 새로고침 (Paging3에서 자동 처리)
+    fun refresh() {
+        // Paging3에서 자동으로 처리됨 (swipe to refresh)
     }
 
     /**
-     * 게시글 좋아요 토글
+     * 💖 게시글 좋아요 토글 (기존 기능 유지)
      * @param postId 게시글 ID
      * @param isLiked 좋아요 상태 (true: 좋아요, false: 좋아요 취소)
      * @param callback 결과 콜백 (success: Boolean)
@@ -142,7 +70,7 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val accessToken = TokenStore.getAccessToken(application.applicationContext)
-                    ?: throw TokenNotFoundException()
+                    ?: throw Exception("로그인이 필요합니다")
 
                 val response = if (isLiked) {
                     postRepository.likePost(accessToken, postId)
@@ -151,60 +79,29 @@ class HomeViewModel @Inject constructor(
                 }
 
                 if (response.isSuccessful) {
-                    Log.d("HomeViewModel", "좋아요 상태 변경 성공: $isLiked")
-
-                    // 🔥 로컬 상태 즉시 업데이트 (LiveData와 StateFlow 둘 다)
-                    updatePostLikeStatus(postId, isLiked)
-
+                    Log.d("HomeViewModel", "💖 좋아요 상태 변경 성공: $isLiked")
                     callback(true)
                 } else {
-                    Log.e("HomeViewModel", "좋아요 상태 변경 실패: ${response.code()}")
+                    Log.e("HomeViewModel", "❌ 좋아요 상태 변경 실패: ${response.code()}")
                     callback(false)
                 }
             } catch (e: Exception) {
-                Log.e("HomeViewModel", "좋아요 처리 중 네트워크 오류", e)
+                Log.e("HomeViewModel", "❌ 좋아요 처리 중 오류: ${e.message}", e)
                 callback(false)
             }
         }
     }
 
-    // 🔥 로컬 상태 업데이트 함수
-    private fun updatePostLikeStatus(postId: String, isLiked: Boolean) {
-        // LiveData 업데이트
-        val currentList = _dataList.value?.toMutableList() ?: return
-        val updatedList = currentList.map { post ->
-            if (post.postId == postId) {
-                post.copy(
-                    isLikedByCurrentUser = isLiked,
-                    likeCount = if (isLiked) post.likeCount + 1 else maxOf(0, post.likeCount - 1)
-                )
-            } else {
-                post
-            }
-        }
-        _dataList.value = updatedList
-
-        // StateFlow 업데이트
-        val currentPosts = _posts.value.toMutableList()
-        val updatedPosts = currentPosts.map { post ->
-            if (post.postId == postId) {
-                post.copy(
-                    isLikedByCurrentUser = isLiked,
-                    likeCount = if (isLiked) post.likeCount + 1 else maxOf(0, post.likeCount - 1)
-                )
-            } else {
-                post
-            }
-        }
-        _posts.value = updatedPosts
+    // 🔥 기존 API를 사용하는 메서드들 (역호환성을 위해 유지)
+    // 이제 Paging3를 사용하므로 직접 호출할 필요 없음
+    @Deprecated("무한 스크롤로 대체됨. postsPagingFlow 사용 권장")
+    fun loadDataFromServer() {
+        // Paging3로 대체되었으므로 비우거나 제거 예정
+        Log.d("HomeViewModel", "무한 스크롤로 대체되었습니다. postsPagingFlow를 사용하세요.")
     }
 
+    // 🔄 기존 새로고침 메서드 (호환성 유지)
     fun refreshData() {
-        loadDataFromServer()
-    }
-
-    fun clearErrorMessage() {
-        _errorMessage.value = null
-        _errorMessageFlow.value = null
+        refresh()
     }
 }

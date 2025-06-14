@@ -14,7 +14,7 @@ data class PostListResponse(
     val authorNickname: String,
     val authorUserId: String,
     val authorProfileImageUrl: String?,
-    val imageUrls: List<String>,
+    val imageUrls: String,
     val likeCount: Int,
     val commentCount: Int,
     val isLikedByCurrentUser: Boolean,
@@ -27,7 +27,7 @@ data class PostListResponse(
         get() = imageUrls.isNotEmpty()
 
     val representativeImageUrl: String?
-        get() = imageUrls.firstOrNull()
+        get() = imageUrls
 
     val displayContent: String
         get() = postContent

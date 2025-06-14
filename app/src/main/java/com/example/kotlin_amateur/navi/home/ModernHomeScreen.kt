@@ -21,6 +21,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.paging.LoadState
+import androidx.paging.compose.LazyPagingItems
+import androidx.paging.compose.collectAsLazyPagingItems
 import com.example.kotlin_amateur.viewmodel.HomeViewModel
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
@@ -29,6 +33,7 @@ import coil.size.Scale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.foundation.Image
 import com.example.kotlin_amateur.R
+import com.example.kotlin_amateur.remote.response.PostListResponse
 
 // 🎨 브랜드 컬러 정의
 object BrandColors {
@@ -47,28 +52,13 @@ fun ModernHomeScreen(
     onNavigateToPostDetail: (String, String?) -> Unit,
     viewModel: HomeViewModel = hiltViewModel()
 ) {
-    // 🔥 StateFlow 상태 수집
-    val posts by viewModel.posts.collectAsState()
-    val isLoading by viewModel.isLoadingFlow.collectAsState()
-    val errorMessage by viewModel.errorMessageFlow.collectAsState()
-    val filteredPosts by viewModel.filteredPosts.collectAsState()
+    // 🔥 새로운 Paging3 StateFlow 상태 수집
+    val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
+    val postsPagingItems = viewModel.postsPagingFlow.collectAsLazyPagingItems()
 
     // UI 상태
     var isSearchActive by remember { mutableStateOf(false) }
-    var searchQuery by remember { mutableStateOf("") }
     var showSpeedDial by remember { mutableStateOf(true) }
-
-    // 검색어 업데이트
-    LaunchedEffect(searchQuery) {
-        viewModel.updateSearchQuery(searchQuery)
-    }
-
-    // 🔍 실제 표시할 게시글
-    val displayPosts = if (isSearchActive && searchQuery.isNotBlank()) {
-        filteredPosts
-    } else {
-        posts
-    }
 
     val context = LocalContext.current
 
@@ -87,10 +77,10 @@ fun ModernHomeScreen(
         Column(
             modifier = Modifier.fillMaxSize()
         ) {
-            // 🎯 모던한 상단 바 (🔥 텍스트 줄임)
+            // 🎯 모던한 상단 바 (기존 UI 유지)
             ModernTopBar(
                 searchQuery = searchQuery,
-                onSearchQueryChange = { searchQuery = it },
+                onSearchQueryChange = viewModel::updateSearchQuery,
                 isSearchActive = isSearchActive,
                 onSearchActiveChange = { isSearchActive = it },
                 modifier = Modifier
@@ -98,41 +88,26 @@ fun ModernHomeScreen(
                     .zIndex(10f)
             )
 
-            // 📱 메인 콘텐츠 (SwipeRefresh 추가)
+            // 📱 메인 콘텐츠 - Paging3으로 업그레이드
             Box(modifier = Modifier.weight(1f)) {
-                if (displayPosts.isEmpty() && !isLoading) {
-                    EmptyStateContent(
-                        isSearchMode = isSearchActive && searchQuery.isNotBlank(),
-                        modifier = Modifier.fillMaxSize()
-                    )
-                } else {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(
-                            horizontal = 16.dp,
-                            vertical = 8.dp
-                        ),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        // 🔥 새로고침 인디케이터 (당겨서 새로고침 효과)
-                        if (isLoading) {
-                            item {
-                                Box(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    CircularProgressIndicator(
-                                        modifier = Modifier.padding(16.dp),
-                                        color = BrandColors.Primary
-                                    )
-                                }
-                            }
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(
+                        horizontal = 16.dp,
+                        vertical = 8.dp
+                    ),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    // 🔥 Paging3 아이템들
+                    items(
+                        count = postsPagingItems.itemCount,
+                        key = { index ->
+                            postsPagingItems[index]?.postId ?: "loading_$index"
                         }
-
-                        items(
-                            items = displayPosts,
-                            key = { post -> post.postId }
-                        ) { post ->
+                    ) { index ->
+                        val post = postsPagingItems[index]
+                        
+                        if (post != null) {
                             ModernPostCard(
                                 post = post,
                                 onPostClick = {
@@ -141,32 +116,76 @@ fun ModernHomeScreen(
                                 onLikeClick = {
                                     viewModel.toggleLike(post.postId, !post.isLikedByCurrentUser) { success ->
                                         if (!success) {
-                                            // 에러 처리는 ViewModel에서 처리
+                                            android.util.Log.e("ModernHomeScreen", "좋아요 실패")
                                         }
                                     }
                                 },
                                 onProfileClick = { userId ->
-                                    // 프로필 클릭 처리 - TODO: 프로필 화면으로 이동
                                     println("프로필 클릭: $userId")
                                 }
                             )
+                        } else {
+                            // 로딩 아이템
+                            ModernPostCardSkeleton()
                         }
                     }
-                }
 
-                // 🔥 로딩 오버레이 (전체 화면)
-                if (isLoading && displayPosts.isEmpty()) {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator(color = BrandColors.Primary)
+                    // 🔄 로딩 상태 처리
+                    when {
+                        postsPagingItems.loadState.refresh is LoadState.Loading -> {
+                            if (postsPagingItems.itemCount == 0) {
+                                item {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(32.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        CircularProgressIndicator(color = BrandColors.Primary)
+                                    }
+                                }
+                            }
+                        }
+                        
+                        postsPagingItems.loadState.append is LoadState.Loading -> {
+                            item {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(24.dp),
+                                        color = BrandColors.Primary
+                                    )
+                                }
+                            }
+                        }
+                        
+                        postsPagingItems.loadState.refresh is LoadState.Error -> {
+                            item {
+                                ModernErrorItem(
+                                    message = "게시글을 불러올 수 없어요",
+                                    onRetryClick = { postsPagingItems.retry() }
+                                )
+                            }
+                        }
+                        
+                        postsPagingItems.loadState.refresh is LoadState.NotLoading && postsPagingItems.itemCount == 0 -> {
+                            item {
+                                EmptyStateContent(
+                                    isSearchMode = isSearchActive && searchQuery.isNotBlank(),
+                                    modifier = Modifier.fillParentMaxSize()
+                                )
+                            }
+                        }
                     }
                 }
             }
         }
 
-        // 🚀 개선된 플로팅 액션 버튼들 (🔥 색상 다양화)
+        // 🚀 개선된 플로팅 액션 버튼들 (기존 유지)
         AnimatedVisibility(
             visible = showSpeedDial,
             enter = slideInVertically(
@@ -182,19 +201,10 @@ fun ModernHomeScreen(
             ModernSpeedDial(
                 onAddPostClick = onNavigateToAddPost,
                 onLocationPromoteClick = {
-                    // 🔥 지역 홍보 기능
                     println("지역 홍보 기능")
                 },
                 modifier = Modifier.padding(16.dp)
             )
-        }
-
-        // 에러 스낵바
-        errorMessage?.let { error ->
-            LaunchedEffect(error) {
-                // TODO: 스낵바 표시 로직 구현
-                viewModel.clearErrorMessage()
-            }
         }
     }
 }
@@ -239,7 +249,7 @@ fun ModernTopBar(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // 타이틀 (🔥 텍스트 줄임)
+                // 타이틀
                 Column {
                     Text(
                         text = "안녕하세요! 👋",
@@ -247,8 +257,8 @@ fun ModernTopBar(
                         color = Color.Gray
                     )
                     Text(
-                        text = "동네 이야기", // 🔥 "오늘의 이야기" → "동네 이야기"로 줄임
-                        fontSize = 22.sp, // 🔥 24sp → 22sp로 줄임
+                        text = "동네 이야기",
+                        fontSize = 22.sp,
                         fontWeight = FontWeight.Bold,
                         color = BrandColors.OnSurface
                     )
@@ -297,7 +307,10 @@ fun SearchTextField(
         },
         trailingIcon = {
             IconButton(
-                onClick = { onSearchActiveChange(false) }
+                onClick = { 
+                    onQueryChange("")
+                    onSearchActiveChange(false) 
+                }
             ) {
                 Icon(
                     Icons.Default.Close,
@@ -318,7 +331,7 @@ fun SearchTextField(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ModernPostCard(
-    post: com.example.kotlin_amateur.remote.response.PostListResponse,
+    post: PostListResponse,
     onPostClick: () -> Unit,
     onLikeClick: () -> Unit,
     onProfileClick: (String) -> Unit,
@@ -344,32 +357,17 @@ fun ModernPostCard(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // 🔥 실제 프로필 이미지 또는 플레이스홀더
+                // 프로필 이미지 또는 플레이스홀더
                 if (!post.authorProfileImageUrl.isNullOrBlank()) {
-                    // 🔥 프로필 이미지 로딩 로깅
-                    android.util.Log.d("ModernPostCard", "프로필 이미지 로딩 시도: ${post.authorProfileImageUrl}")
-                    
                     AsyncImage(
                         model = ImageRequest.Builder(LocalContext.current)
                             .data(post.authorProfileImageUrl)
                             .crossfade(true)
-                            // 🔥 메모리 최적화 설정
                             .memoryCachePolicy(CachePolicy.ENABLED)
                             .diskCachePolicy(CachePolicy.ENABLED)
-                            .size(40, 40) // 정확한 크기 지정
+                            .size(40, 40)
                             .scale(Scale.FILL)
-                            .allowHardware(false) // 메모리 안정성
-                            .listener(
-                                onStart = {
-                                    android.util.Log.d("ModernPostCard", "프로필 이미지 로딩 시작: ${post.authorNickname}")
-                                },
-                                onSuccess = { _, _ ->
-                                    android.util.Log.d("ModernPostCard", "프로필 이미지 로딩 성공: ${post.authorNickname}")
-                                },
-                                onError = { _, throwable ->
-                                    android.util.Log.e("ModernPostCard", "프로필 이미지 로딩 실패: ${post.authorNickname} - ${throwable.throwable?.message}")
-                                }
-                            )
+                            .allowHardware(false)
                             .build(),
                         contentDescription = "${post.authorNickname} 프로필",
                         modifier = Modifier
@@ -381,7 +379,6 @@ fun ModernPostCard(
                         error = painterResource(id = R.drawable.image_error_placeholder)
                     )
                 } else {
-                    // 프로필 이미지가 없을 때 기본 이미지
                     Image(
                         painter = painterResource(id = R.drawable.image_error_placeholder),
                         contentDescription = "기본 프로필 이미지",
@@ -435,39 +432,24 @@ fun ModernPostCard(
             }
 
             Text(
-                text = post.displayContent,
+                text = post.postContent.take(150), // 150자로 제한
                 fontSize = 14.sp,
                 color = Color.Gray,
                 lineHeight = 20.sp
             )
 
-            // 🔥 실제 이미지 표시
-            if (post.hasImage && post.imageUrls.isNotEmpty()) {
-                // 🔥 이미지 로딩 로깅
-                android.util.Log.d("ModernPostCard", "게시글 ${post.postId} 이미지 로딩 시도: ${post.imageUrls.first()}")
-                
+            // 이미지 표시
+            if (post.hasImage && !post.imageUrls.isNullOrEmpty()) {
                 Spacer(modifier = Modifier.height(12.dp))
                 AsyncImage(
                     model = ImageRequest.Builder(LocalContext.current)
-                        .data(post.imageUrls.first()) // 첫 번째 이미지 표시
+                        .data(post.imageUrls) // String 타입
                         .crossfade(true)
-                        // 🔥 메모리 최적화 설정
                         .memoryCachePolicy(CachePolicy.ENABLED)
                         .diskCachePolicy(CachePolicy.ENABLED)
-                        .size(600, 400) // 적절한 크기로 제한
+                        .size(600, 400)
                         .scale(Scale.FILL)
-                        .allowHardware(false) // 메모리 안정성
-                        .listener(
-                            onStart = {
-                                android.util.Log.d("ModernPostCard", "게시글 ${post.postId} 이미지 로딩 시작")
-                            },
-                            onSuccess = { _, _ ->
-                                android.util.Log.d("ModernPostCard", "게시글 ${post.postId} 이미지 로딩 성공")
-                            },
-                            onError = { _, throwable ->
-                                android.util.Log.e("ModernPostCard", "게시글 ${post.postId} 이미지 로딩 실패: ${throwable.throwable?.message}")
-                            }
-                        )
+                        .allowHardware(false)
                         .build(),
                     contentDescription = "게시글 이미지",
                     modifier = Modifier
@@ -488,7 +470,6 @@ fun ModernPostCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // 좋아요, 댓글 등
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
@@ -500,14 +481,13 @@ fun ModernPostCard(
                     )
 
                     ActionButton(
-                        icon = R.drawable.ic_comment, // drawable 리소스 사용
+                        icon = R.drawable.ic_comment,
                         text = "${post.commentCount}",
                         color = Color.Gray,
                         onClick = { /* 댓글 */ }
                     )
                 }
 
-                // 공유 버튼
                 IconButton(onClick = { /* 공유 */ }) {
                     Icon(
                         Icons.Default.Share,
@@ -515,6 +495,126 @@ fun ModernPostCard(
                         tint = Color.Gray
                     )
                 }
+            }
+        }
+    }
+}
+
+// 💀 로딩 스켈레톤
+@Composable
+fun ModernPostCardSkeleton(
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color.White
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            // 작성자 정보 스켈레톤
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .background(Color.Gray.copy(alpha = 0.3f))
+                )
+                
+                Spacer(modifier = Modifier.width(12.dp))
+                
+                Column {
+                    Box(
+                        modifier = Modifier
+                            .width(80.dp)
+                            .height(14.dp)
+                            .background(Color.Gray.copy(alpha = 0.3f), RoundedCornerShape(4.dp))
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Box(
+                        modifier = Modifier
+                            .width(60.dp)
+                            .height(12.dp)
+                            .background(Color.Gray.copy(alpha = 0.2f), RoundedCornerShape(4.dp))
+                    )
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            // 제목 스켈레톤
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(16.dp)
+                    .background(Color.Gray.copy(alpha = 0.3f), RoundedCornerShape(4.dp))
+            )
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            // 내용 스켈레톤
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(0.8f)
+                    .height(14.dp)
+                    .background(Color.Gray.copy(alpha = 0.2f), RoundedCornerShape(4.dp))
+            )
+        }
+    }
+}
+
+// ❌ 에러 아이템
+@Composable
+fun ModernErrorItem(
+    message: String,
+    onRetryClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color.Red.copy(alpha = 0.1f)
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Icon(
+                Icons.Default.Clear,
+                contentDescription = null,
+                tint = Color.Red,
+                modifier = Modifier.size(48.dp)
+            )
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            Text(
+                text = message,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Medium,
+                color = BrandColors.OnSurface
+            )
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            Button(
+                onClick = onRetryClick,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = BrandColors.Primary
+                )
+            ) {
+                Text("다시 시도")
             }
         }
     }
@@ -588,7 +688,7 @@ fun EmptyStateContent(
     }
 }
 
-// 🔥 색상 다양화된 SpeedDial
+// 🔥 색상 다양화된 SpeedDial (기존 유지)
 @Composable
 fun ModernSpeedDial(
     onAddPostClick: () -> Unit,
@@ -612,22 +712,22 @@ fun ModernSpeedDial(
                 horizontalAlignment = Alignment.End,
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // 🔥 글 작성 버튼 (빨간색)
+                // 글 작성 버튼
                 SpeedDialOption(
                     icon = Icons.Default.Edit,
                     label = "글 작성",
-                    backgroundColor = Color(0xFFFF6B6B), // 빨간색
+                    backgroundColor = Color(0xFFFF6B6B),
                     onClick = {
                         onAddPostClick()
                         isExpanded = false
                     }
                 )
 
-                // 🔥 지역 홍보 버튼 (초록색)
+                // 지역 홍보 버튼
                 SpeedDialOption(
-                    icon = Icons.Default.LocationOn, // 홍보 아이콘
+                    icon = Icons.Default.LocationOn,
                     label = "지역 홍보",
-                    backgroundColor = Color(0xFF51CF66), // 초록색
+                    backgroundColor = Color(0xFF51CF66),
                     onClick = {
                         onLocationPromoteClick()
                         isExpanded = false
@@ -688,7 +788,7 @@ fun SpeedDialOption(
             )
         }
 
-        // 🔥 색상이 적용된 버튼
+        // 색상이 적용된 버튼
         SmallFloatingActionButton(
             onClick = onClick,
             containerColor = backgroundColor,

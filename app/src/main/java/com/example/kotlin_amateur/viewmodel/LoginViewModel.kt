@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 import javax.inject.Inject
 
 @HiltViewModel
@@ -20,45 +21,43 @@ class LoginViewModel @Inject constructor(
     private val apiService: BackendApiService
 ) : ViewModel() {
 
-    // 🔥 LiveData 대신 StateFlow 사용 (메모리 효율적)
     private val _loginResult = MutableStateFlow<LoginResult?>(null)
     val loginResult: StateFlow<LoginResult?> = _loginResult.asStateFlow()
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
-    // 🔥 진행 중인 작업 추적 (취소 가능)
     private var loginJob: Job? = null
     private var registerJob: Job? = null
+    private var cleanupJob: Job? = null
 
     fun loginWithGoogleToken(idToken: String) {
-        // 🔥 중복 요청 방지
         if (_isLoading.value) {
-            Log.w("LoginViewModel", "이미 로그인 진행 중입니다")
+            Log.w("LoginViewModel", "로그인 이미 진행 중")
             return
         }
 
-        // 🔥 이전 작업 취소
-        loginJob?.cancel()
+        cancelAllOperations()
         
         loginJob = viewModelScope.launch {
             try {
                 _isLoading.value = true
-                _loginResult.value = null // 이전 결과 초기화
+                _loginResult.value = null
                 
+                // 🔥 안전한 메모리 로깅 (GC 호출 제거)
+                logMemoryUsage("login_start")
+
                 Log.d("LoginViewModel", "🔥 Google 로그인 시작")
-                logMemoryUsage("loginStart")
 
                 val response = apiService.loginWithGoogle(IdTokenRequest(idToken))
                 val body = response.body()
 
-                Log.d("LoginViewModel", "✅ API 응답 받음: ${response.isSuccessful}")
-                Log.d("LoginViewModel", "응답 코드: ${response.code()}")
+                Log.d("LoginViewModel", "✅ API 응답: ${response.isSuccessful}, 코드: ${response.code()}")
 
                 val result = when {
                     !response.isSuccessful || body == null -> {
                         Log.e("LoginViewModel", "❌ 로그인 실패 - 응답 없음")
-                        LoginResult.Failure(Exception("로그인 실패 또는 응답 없음 (${response.code()})"))
+                        LoginResult.Failure(createLightweightException("로그인 실패 (${response.code()})"))
                     }
                     body.nickname.isNullOrBlank() -> {
                         Log.d("LoginViewModel", "🔥 닉네임 설정 필요")
@@ -80,48 +79,52 @@ class LoginViewModel @Inject constructor(
                 }
 
                 _loginResult.value = result
-                logMemoryUsage("loginEnd")
+                scheduleMemoryCleanup()
 
             } catch (e: CancellationException) {
                 Log.d("LoginViewModel", "로그인 취소됨")
-                // 취소는 UI에 알리지 않음
             } catch (e: Exception) {
-                Log.e("LoginViewModel", "❌ 로그인 예외 발생", e)
-                _loginResult.value = LoginResult.Failure(e)
+                Log.e("LoginViewModel", "❌ 로그인 예외: ${e.message}")
+                
+                val lightweightException = createLightweightException(e.message ?: "알 수 없는 오류")
+                _loginResult.value = LoginResult.Failure(lightweightException)
+                
+                // 🔥 안전한 메모리 로깅 (GC 호출 제거)
+                logMemoryUsage("login_error")
+                
             } finally {
                 _isLoading.value = false
+                loginJob = null
             }
         }
     }
 
     fun registerWithGoogleToken(idToken: String) {
-        // 🔥 중복 요청 방지
         if (_isLoading.value) {
-            Log.w("LoginViewModel", "이미 회원가입 진행 중입니다")
+            Log.w("LoginViewModel", "회원가입 이미 진행 중")
             return
         }
 
-        // 🔥 이전 작업 취소
-        registerJob?.cancel()
+        cancelAllOperations()
         
         registerJob = viewModelScope.launch {
             try {
                 _isLoading.value = true
-                _loginResult.value = null // 이전 결과 초기화
+                _loginResult.value = null
                 
+                logMemoryUsage("register_start")
+
                 Log.d("LoginViewModel", "🔥 Google 회원가입 시작")
-                logMemoryUsage("registerStart")
 
                 val response = apiService.registerWithGoogle(IdTokenRequest(idToken))
                 val body = response.body()
 
-                Log.d("LoginViewModel", "✅ API 응답 받음: ${response.isSuccessful}")
-                Log.d("LoginViewModel", "응답 코드: ${response.code()}")
+                Log.d("LoginViewModel", "✅ API 응답: ${response.isSuccessful}, 코드: ${response.code()}")
 
                 val result = when {
                     !response.isSuccessful || body == null -> {
                         Log.e("LoginViewModel", "❌ 회원가입 실패 - 응답 없음")
-                        LoginResult.Failure(Exception("회원가입 실패 또는 응답 없음 (${response.code()})"))
+                        LoginResult.Failure(createLightweightException("회원가입 실패 (${response.code()})"))
                     }
                     body.nickname.isNullOrBlank() -> {
                         Log.d("LoginViewModel", "🔥 닉네임 설정 필요")
@@ -143,60 +146,105 @@ class LoginViewModel @Inject constructor(
                 }
 
                 _loginResult.value = result
-                logMemoryUsage("registerEnd")
+                scheduleMemoryCleanup()
 
             } catch (e: CancellationException) {
                 Log.d("LoginViewModel", "회원가입 취소됨")
-                // 취소는 UI에 알리지 않음
             } catch (e: Exception) {
-                Log.e("LoginViewModel", "❌ 회원가입 예외 발생", e)
-                _loginResult.value = LoginResult.Failure(e)
+                Log.e("LoginViewModel", "❌ 회원가입 예외: ${e.message}")
+                
+                val lightweightException = createLightweightException(e.message ?: "알 수 없는 오류")
+                _loginResult.value = LoginResult.Failure(lightweightException)
+                
+                logMemoryUsage("register_error")
+                
             } finally {
                 _isLoading.value = false
+                registerJob = null
             }
         }
     }
 
     /**
-     * 🔥 진행 중인 요청 취소 (메모리 누수 방지)
+     * 🔥 Create lightweight exception without heavy stack trace
      */
-    fun cancelOngoingRequests() {
-        loginJob?.cancel()
-        registerJob?.cancel()
-        
-        Log.d("LoginViewModel", "🧹 진행 중인 요청 취소됨")
+    private fun createLightweightException(message: String): Exception {
+        return Exception(message).apply {
+            stackTrace = emptyArray()
+        }
     }
 
     /**
-     * 🔥 ViewModel 정리 (메모리 누수 방지)
-     */
-    fun cleanup() {
-        cancelOngoingRequests()
-        
-        // StateFlow 초기화
-        _loginResult.value = null
-        _isLoading.value = false
-        
-        loginJob = null
-        registerJob = null
-        
-        Log.d("LoginViewModel", "🧹 ViewModel 정리 완료")
-        logMemoryUsage("cleanup")
-    }
-
-    /**
-     * 🔥 메모리 사용량 로깅
+     * 🔥 안전한 메모리 로깅 (GC 호출 완전 제거)
      */
     private fun logMemoryUsage(tag: String) {
         try {
             val runtime = Runtime.getRuntime()
             val usedMemInMB = (runtime.totalMemory() - runtime.freeMemory()) / 1048576L
-            val maxHeapSizeInMB = runtime.maxMemory() / 1048576L
+            val maxMemInMB = runtime.maxMemory() / 1048576L
+            val usagePercent = (usedMemInMB * 100 / maxMemInMB)
             
-            Log.d("MemoryUsage", "🔍 [ViewModel-$tag] 메모리: ${usedMemInMB}MB/${maxHeapSizeInMB}MB")
+            Log.d("MemoryUsage", "📊 [$tag] 메모리: ${usedMemInMB}MB/${maxMemInMB}MB (${usagePercent}%)")
+            
+            // 🔥 경고만 출력, GC는 절대 호출하지 않음
+            if (usedMemInMB > 200) {
+                Log.w("MemoryUsage", "⚠️ 메모리 사용량 높음: ${usedMemInMB}MB - 자연스러운 정리 대기")
+            }
+            
         } catch (e: Exception) {
             Log.e("MemoryUsage", "메모리 측정 실패", e)
         }
+    }
+
+    /**
+     * 🔥 안전한 자동 정리 (GC 호출 제거)
+     */
+    private fun scheduleMemoryCleanup() {
+        cleanupJob?.cancel()
+        cleanupJob = viewModelScope.launch {
+            delay(5000) // 5초 후 정리
+            
+            // StateFlow만 정리 (안전함)
+            _loginResult.value = null
+            
+            Log.d("LoginViewModel", "🧹 스케줄된 정리 완료")
+        }
+    }
+
+    /**
+     * 🔥 안전한 요청 취소
+     */
+    fun cancelOngoingRequests() {
+        cancelAllOperations()
+        Log.d("LoginViewModel", "🧹 진행 중인 요청 취소")
+    }
+
+    /**
+     * 🔥 Job 취소
+     */
+    private fun cancelAllOperations() {
+        loginJob?.cancel()
+        registerJob?.cancel()
+        cleanupJob?.cancel()
+        
+        loginJob = null
+        registerJob = null
+        cleanupJob = null
+        
+        Log.d("LoginViewModel", "🧹 모든 작업 취소됨")
+    }
+
+    /**
+     * 🔥 안전한 ViewModel 정리
+     */
+    fun cleanup() {
+        cancelAllOperations()
+        
+        // StateFlow만 정리 (안전함)
+        _loginResult.value = null
+        _isLoading.value = false
+        
+        Log.d("LoginViewModel", "🧹 ViewModel 정리 완료")
     }
 
     override fun onCleared() {
