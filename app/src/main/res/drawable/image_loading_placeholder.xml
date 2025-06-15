@@ -26,8 +26,14 @@
         android:pathData="M90,140 L110,140 L110,142 L90,142 Z M85,145 L115,145 C116.1,145 117,145.9 117,147 L117,157 C117,158.1 116.1,159 115,159 L85,159 C83.9,159 83,158.1 83,157 L83,147 C83,145.9 83.9,145 85,145 Z M100,156 C103.3,156 106,153.3 106,150 C106,146.7 103.3,144 100,144 C96.7,144 94,146.7 94,150 C94,153.3 96.7,156 100,156 Z" />
     
     <!-- 점들 (로딩 표시) -->
-    <circle android:fillColor="#BDBDBD" android:cx="85" android:cy="165" android:r="2" />
-    <circle android:fillColor="#9E9E9E" android:cx="100" android:cy="165" android:r="2" />
-    <circle android:fillColor="#757575" android:cx="115" android:cy="165" android:r="2" />
+    <path
+        android:fillColor="#BDBDBD"
+        android:pathData="M85,165 A2,2 0 1,1 85,161 A2,2 0 1,1 85,165" />
+    <path
+        android:fillColor="#9E9E9E"
+        android:pathData="M100,165 A2,2 0 1,1 100,161 A2,2 0 1,1 100,165" />
+    <path
+        android:fillColor="#757575"
+        android:pathData="M115,165 A2,2 0 1,1 115,161 A2,2 0 1,1 115,165" />
     
 </vector>

@@ -21,12 +21,22 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"
+        
         // 🔥 메모리 관련 설정
         multiDexEnabled = true
         manifestPlaceholders["emoji_compat_config"] = "disabled"
-        // 🔥 이미지 압축 설정
         vectorDrawables.useSupportLibrary = true
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        
+        // 🛡️ Room 데이터베이스 최적화 설정
+        javaCompileOptions {
+            annotationProcessorOptions {
+                argument("room.schemaLocation", "$projectDir/schemas")
+                argument("room.incremental", "true")
+                argument("room.expandProjection", "true")
+            }
+        }
+        
         vectorDrawables {
             useSupportLibrary = true
         }
@@ -65,6 +75,23 @@ android {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
+    // 🛡️ KAPT 최적화 설정
+    kapt {
+        correctErrorTypes = true
+        useBuildCache = true
+        
+        // 메모리 최적화
+        javacOptions {
+            option("-Xmx1024m")
+        }
+        
+        // Room 스키마 검증 최적화
+        arguments {
+            arg("room.schemaLocation", "$projectDir/schemas")
+            arg("room.incremental", "true")
+        }
+    }
+    
     kotlin {
         jvmToolchain(17) // ✅ Kotlin 2.1과 Compose 1.6 이상에 필수
     }
@@ -122,6 +149,15 @@ dependencies {
     // ✅ 기타 라이브러리들 (libs 방식)
     implementation(libs.kakao.maps)
     implementation(libs.androidx.paging.compose)
+    
+    // 🛡️ Room 데이터베이스 최적화 (메모리 안전)
+    implementation("androidx.room:room-runtime:2.6.1")
+    implementation("androidx.room:room-ktx:2.6.1")
+    kapt("androidx.room:room-compiler:2.6.1")
+    
+    // SQLite 드라이버 명시적 추가 (호환성 문제 해결)
+    implementation("androidx.sqlite:sqlite-ktx:2.4.0")
+    
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.androidx.security.crypto)
     

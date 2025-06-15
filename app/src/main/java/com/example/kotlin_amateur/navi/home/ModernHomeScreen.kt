@@ -6,6 +6,8 @@ import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.*
 import androidx.compose.foundation.shape.*
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -16,6 +18,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -83,6 +86,7 @@ fun ModernHomeScreen(
                 onSearchQueryChange = viewModel::updateSearchQuery,
                 isSearchActive = isSearchActive,
                 onSearchActiveChange = { isSearchActive = it },
+                viewModel = viewModel, // ✅ 추가
                 modifier = Modifier
                     .fillMaxWidth()
                     .zIndex(10f)
@@ -216,6 +220,7 @@ fun ModernTopBar(
     onSearchQueryChange: (String) -> Unit,
     isSearchActive: Boolean,
     onSearchActiveChange: (Boolean) -> Unit,
+    viewModel: HomeViewModel, // ✅ 추가
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -236,6 +241,7 @@ fun ModernTopBar(
                 query = searchQuery,
                 onQueryChange = onSearchQueryChange,
                 onSearchActiveChange = onSearchActiveChange,
+                viewModel = viewModel, // ✅ 추가
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp)
@@ -289,43 +295,156 @@ fun SearchTextField(
     query: String,
     onQueryChange: (String) -> Unit,
     onSearchActiveChange: (Boolean) -> Unit,
+    viewModel: HomeViewModel,
     modifier: Modifier = Modifier
 ) {
-    OutlinedTextField(
-        value = query,
-        onValueChange = onQueryChange,
-        modifier = modifier,
-        placeholder = {
-            Text("게시글 검색...")
-        },
-        leadingIcon = {
-            Icon(
-                Icons.Default.Search,
-                contentDescription = null,
-                tint = BrandColors.Primary
-            )
-        },
-        trailingIcon = {
-            IconButton(
-                onClick = { 
-                    onQueryChange("")
-                    onSearchActiveChange(false) 
-                }
-            ) {
+    val recentSearches by viewModel.recentSearches.collectAsStateWithLifecycle(initialValue = emptyList())
+    
+    Column {
+        OutlinedTextField(
+            value = query,
+            onValueChange = onQueryChange,
+            modifier = modifier,
+            placeholder = {
+                Text("게시글 검색...")
+            },
+            leadingIcon = {
                 Icon(
-                    Icons.Default.Close,
-                    contentDescription = "검색 닫기",
-                    tint = Color.Gray
+                    Icons.Default.Search,
+                    contentDescription = null,
+                    tint = BrandColors.Primary
                 )
+            },
+            trailingIcon = {
+                // ✅ X 버튼 하나만 (우측)
+                if (query.isNotEmpty()) {
+                    IconButton(
+                        onClick = { onQueryChange("") }
+                    ) {
+                        Icon(
+                            Icons.Default.Clear,
+                            contentDescription = "검색어 지우기",
+                            tint = Color.Gray
+                        )
+                    }
+                } else {
+                    // 빈 공간일 때는 닫기 버튼
+                    IconButton(
+                        onClick = { 
+                            onQueryChange("")
+                            onSearchActiveChange(false) 
+                        }
+                    ) {
+                        Icon(
+                            Icons.Default.Close,
+                            contentDescription = "검색 닫기",
+                            tint = Color.Gray
+                        )
+                    }
+                }
+            },
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = BrandColors.Primary,
+                cursorColor = BrandColors.Primary
+            ),
+            shape = RoundedCornerShape(16.dp),
+            singleLine = true,
+            // 🎯 키보드 액션 추가 (엔터키로 검색)
+            keyboardOptions = KeyboardOptions(
+                imeAction = ImeAction.Search
+            ),
+            keyboardActions = KeyboardActions(
+                onSearch = { 
+                    viewModel.performManualSearch() // 🎯 엔터키로 명시적 검색
+                }
+            )
+        )
+        
+        // ✅ 최근 검색어 표시
+        if (recentSearches.isNotEmpty() && query.isEmpty()) {
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = Color.White
+                ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(12.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "최근 검색어",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = BrandColors.OnSurface
+                        )
+                        
+                        TextButton(
+                            onClick = { viewModel.clearAllSearchHistory() }
+                        ) {
+                            Text(
+                                text = "전체 삭제",
+                                fontSize = 12.sp,
+                                color = Color.Gray
+                            )
+                        }
+                    }
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    recentSearches.forEach { searchHistory ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    viewModel.onRecentSearchClick(searchHistory)
+                                    onSearchActiveChange(false)
+                                }
+                                .padding(vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Default.History,
+                                contentDescription = null,
+                                tint = Color.Gray,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            
+                            Spacer(modifier = Modifier.width(12.dp))
+                            
+                            Text(
+                                text = searchHistory.query,
+                                fontSize = 14.sp,
+                                color = BrandColors.OnSurface,
+                                modifier = Modifier.weight(1f)
+                            )
+                            
+                            IconButton(
+                                onClick = { 
+                                    viewModel.deleteSearchHistory(searchHistory.query)
+                                },
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.Close,
+                                    contentDescription = "삭제",
+                                    tint = Color.Gray,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
+                    }
+                }
             }
-        },
-        colors = OutlinedTextFieldDefaults.colors(
-            focusedBorderColor = BrandColors.Primary,
-            cursorColor = BrandColors.Primary
-        ),
-        shape = RoundedCornerShape(16.dp),
-        singleLine = true
-    )
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -369,6 +488,8 @@ fun ModernPostCard(
                             .size(120, 120) // 프로필 이미지 최적화 (3배 해상도)
                             .scale(Scale.FILL)
                             .allowHardware(true) // 하드웨어 가속 활성화
+                            .allowRgb565(true) // ✅ 작은 이미지 메모리 절약
+                            .bitmapConfig(android.graphics.Bitmap.Config.RGB_565) // ✅ 프로필은 품질 낮춰도 OK
                             .transformations(
                                 // ✅ 원형 이미진 미리 처리
                                 coil.transform.CircleCropTransformation()
@@ -456,6 +577,8 @@ fun ModernPostCard(
                             .size(800, 600) // 원본 크기 유지 (압축용)
                             .scale(Scale.FILL) // 전체 채우기
                             .allowHardware(true) // 하드웨어 가속 활성화
+                            .allowRgb565(true) // ✅ 메모리 절약 (16비트 대신 32비트)
+                            .bitmapConfig(android.graphics.Bitmap.Config.RGB_565) // ✅ 색상 품질 자동 조절
                             .transformations(
                                 // ✅ 서버 전송 전 압축 (메모리 절약)
                                 coil.transform.RoundedCornersTransformation(12.dp.value)

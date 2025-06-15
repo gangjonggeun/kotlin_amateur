@@ -1,7 +1,7 @@
 [versions]
 agp = "8.4.0"
 kotlin = "1.9.23"
-hilt = "2.48"
+hilt = "2.51.1"  # 🔥 최신 안정 버전으로 업데이트
 coreKtx = "1.13.1"
 junit = "4.13.2"
 junitVersion = "1.2.1"
@@ -19,6 +19,7 @@ runtimeLivedata = "1.8.2"
 playServicesMaps = "19.2.0"
 emoji2Bundled = "1.5.0"
 pagingCommonAndroid = "3.3.6"
+room = "2.6.1"  # ✅ Room 버전 추가
 
 # 🔥 Fragment 추가 (핵심!)
 fragment = "1.6.2"
@@ -87,11 +88,16 @@ play-services-base = { group = "com.google.android.gms", name = "play-services-b
 play-services-tasks = { group = "com.google.android.gms", name = "play-services-tasks", version.ref = "playServicesTasks" }
 play-services-location = { group = "com.google.android.gms", name = "play-services-location", version.ref = "playServicesLocation" }
 
-# ✅ 기타 라이브러리들
-kakao-maps = { group = "com.kakao.maps.open", name = "android", version.ref = "kakaoMaps" }
+# ✅ Paging & Room
 androidx-paging-compose = { group = "androidx.paging", name = "paging-compose", version.ref = "paging" }
+androidx-room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
+androidx-room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
+androidx-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
 androidx-datastore-preferences = { group = "androidx.datastore", name = "datastore-preferences", version.ref = "datastore" }
 androidx-security-crypto = { group = "androidx.security", name = "security-crypto", version.ref = "security" }
+
+# ✅ 기타 라이브러리들
+kakao-maps = { group = "com.kakao.maps.open", name = "android", version.ref = "kakaoMaps" }
 leakcanary-android = { group = "com.squareup.leakcanary", name = "leakcanary-android", version.ref = "leakcanary" }
 
 # ✅ 테스트 라이브러리들
@@ -104,3 +110,5 @@ androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-co
 androidApplication = { id = "com.android.application", version.ref = "agp" }  # ✅ 하드코딩 제거
 jetbrainsKotlinAndroid = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlinCompose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+hilt = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }
+kapt = { id = "org.jetbrains.kotlin.kapt", version.ref = "kotlin" }  # ✅ KAPT 추가
