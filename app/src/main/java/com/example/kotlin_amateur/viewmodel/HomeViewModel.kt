@@ -36,9 +36,10 @@ class HomeViewModel @Inject constructor(
         searchQuery.flatMapLatest { query ->
             Pager(
                 config = PagingConfig(
-                    pageSize = 20,              // 한 번에 20개씩 로딩
-                    prefetchDistance = 5,       // 5개 남았을 때 미리 로딩
-                    enablePlaceholders = false  // 플레이스홀더 비활성화 (메모리 절약)
+                    pageSize = 5,               // 서버와 맞춰 5개씩 로딩
+                    prefetchDistance = 2,       // 2개 남았을 때 미리 로딩
+                    enablePlaceholders = false, // 플레이스홀더 비활성화 (메모리 절약)
+                    initialLoadSize = 5         // 초기 로드 크기도 5개
                 ),
                 pagingSourceFactory = {
                     PostPagingSource(

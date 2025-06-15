@@ -127,6 +127,14 @@ class LoginViewModel @Inject constructor(
                         LoginResult.Failure(createLightweightException("회원가입 실패 (${response.code()})"))
                     }
                     body.nickname.isNullOrBlank() -> {
+
+                        Log.d("LoginViewModel", "🔍 닉네임 필요함 체크 상세:")
+                        Log.d("LoginViewModel", "   - nickname 원본: '${body.nickname}'")
+                        Log.d("LoginViewModel", "   - nickname == null: ${body.nickname == null}")
+                        Log.d("LoginViewModel", "   - nickname.isEmpty(): ${body.nickname?.isEmpty()}")
+                        Log.d("LoginViewModel", "   - nickname.isBlank(): ${body.nickname?.isBlank()}")
+                        Log.d("LoginViewModel", "   - isNullOrBlank() 결과: ${body.nickname.isNullOrBlank()}")
+
                         Log.d("LoginViewModel", "🔥 닉네임 설정 필요")
                         LoginResult.NeedNickname(
                             email = body.email.orEmpty(),
@@ -137,6 +145,13 @@ class LoginViewModel @Inject constructor(
                         )
                     }
                     else -> {
+                        Log.d("LoginViewModel", "🔍 회원가입 체크 상세:")
+                        Log.d("LoginViewModel", "   - nickname 원본: '${body.nickname}'")
+                        Log.d("LoginViewModel", "   - nickname == null: ${body.nickname == null}")
+                        Log.d("LoginViewModel", "   - nickname.isEmpty(): ${body.nickname?.isEmpty()}")
+                        Log.d("LoginViewModel", "   - nickname.isBlank(): ${body.nickname?.isBlank()}")
+                        Log.d("LoginViewModel", "   - isNullOrBlank() 결과: ${body.nickname.isNullOrBlank()}")
+
                         Log.d("LoginViewModel", "✅ 회원가입 성공")
                         LoginResult.Success(
                             accessToken = body.accessToken,

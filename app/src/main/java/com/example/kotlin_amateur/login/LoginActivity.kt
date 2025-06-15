@@ -35,8 +35,9 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.util.concurrent.TimeUnit
 
+
 @AndroidEntryPoint
-class LoginActivity : AppCompatActivity() {
+class LoginActivity : AppCompatActivity(), ProfileSetupBottomSheet.OnProfileSetupCompleteListener {
 
     private var _binding: ActivityLoginBinding? = null
     private val binding get() = _binding!!
@@ -251,15 +252,18 @@ class LoginActivity : AppCompatActivity() {
     private fun showProfileSetup() {
         try {
             showInfo("프로필 설정이 필요합니다")
-            cleanupAndNavigate() // 임시로 바로 메인으로
+            val bottomSheet = ProfileSetupBottomSheet()
+            bottomSheet.show(supportFragmentManager, "ProfileSetupBottomSheet")
+
+            
         } catch (e: Exception) {
             Log.e("LoginActivity", "프로필 설정 처리 실패", e)
             showError("프로필 설정 중 오류가 발생했습니다")
         }
     }
 
-    fun onProfileSetupComplete() {
-        Log.d("LoginSuccess", "Login Success")
+    override fun onProfileSetupComplete() {
+        Log.d("LoginSuccess", "✅ 프로필 설정 완료! 메인으로 이동")
         cleanupAndNavigate()
     }
 

@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="200dp"
+    android:height="200dp"
+    android:viewportWidth="200"
+    android:viewportHeight="200">
+    
+    <!-- 배경 -->
+    <path
+        android:fillColor="#F5F5F5"
+        android:pathData="M0,0h200v200h-200z" />
+    
+    <!-- 로딩 아이콘 배경 원 -->
+    <path
+        android:fillColor="#E0E0E0"
+        android:pathData="M100,70 A30,30 0 1,1 100,130 A30,30 0 1,1 100,70" />
+    
+    <!-- 로딩 스피너 -->
+    <path
+        android:fillColor="#667eea"
+        android:pathData="M100,75 A25,25 0 0,1 125,100 L120,100 A20,20 0 0,0 100,80 Z" />
+    
+    <!-- 카메라 아이콘 -->
+    <path
+        android:fillColor="#9E9E9E"
+        android:pathData="M90,140 L110,140 L110,142 L90,142 Z M85,145 L115,145 C116.1,145 117,145.9 117,147 L117,157 C117,158.1 116.1,159 115,159 L85,159 C83.9,159 83,158.1 83,157 L83,147 C83,145.9 83.9,145 85,145 Z M100,156 C103.3,156 106,153.3 106,150 C106,146.7 103.3,144 100,144 C96.7,144 94,146.7 94,150 C94,153.3 96.7,156 100,156 Z" />
+    
+    <!-- 점들 (로딩 표시) -->
+    <circle android:fillColor="#BDBDBD" android:cx="85" android:cy="165" android:r="2" />
+    <circle android:fillColor="#9E9E9E" android:cx="100" android:cy="165" android:r="2" />
+    <circle android:fillColor="#757575" android:cx="115" android:cy="165" android:r="2" />
+    
+</vector>

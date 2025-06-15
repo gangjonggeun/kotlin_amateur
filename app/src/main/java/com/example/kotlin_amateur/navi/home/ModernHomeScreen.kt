@@ -102,7 +102,7 @@ fun ModernHomeScreen(
                     items(
                         count = postsPagingItems.itemCount,
                         key = { index ->
-                            postsPagingItems[index]?.postId ?: "loading_$index"
+                            postsPagingItems.peek(index)?.postId ?: "item_$index"
                         }
                     ) { index ->
                         val post = postsPagingItems[index]
@@ -362,12 +362,17 @@ fun ModernPostCard(
                     AsyncImage(
                         model = ImageRequest.Builder(LocalContext.current)
                             .data(post.authorProfileImageUrl)
-                            .crossfade(true)
+                            .crossfade(200) // 빠른 전환
                             .memoryCachePolicy(CachePolicy.ENABLED)
                             .diskCachePolicy(CachePolicy.ENABLED)
-                            .size(40, 40)
+                            .networkCachePolicy(CachePolicy.ENABLED)
+                            .size(120, 120) // 프로필 이미지 최적화 (3배 해상도)
                             .scale(Scale.FILL)
-                            .allowHardware(false)
+                            .allowHardware(true) // 하드웨어 가속 활성화
+                            .transformations(
+                                // ✅ 원형 이미진 미리 처리
+                                coil.transform.CircleCropTransformation()
+                            )
                             .build(),
                         contentDescription = "${post.authorNickname} 프로필",
                         modifier = Modifier
@@ -375,8 +380,8 @@ fun ModernPostCard(
                             .clip(CircleShape)
                             .clickable { onProfileClick(post.authorUserId) },
                         contentScale = ContentScale.Crop,
-                        placeholder = painterResource(id = R.drawable.image_error_placeholder),
-                        error = painterResource(id = R.drawable.image_error_placeholder)
+                        placeholder = painterResource(id = R.drawable.image_loading_placeholder), // 로딩 전용
+                        error = painterResource(id = R.drawable.image_error_placeholder) // 에러 전용
                     )
                 } else {
                     Image(
@@ -441,25 +446,30 @@ fun ModernPostCard(
             // 이미지 표시
             if (post.hasImage && !post.imageUrls.isNullOrEmpty()) {
                 Spacer(modifier = Modifier.height(12.dp))
-                AsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current)
-                        .data(post.imageUrls) // String 타입
-                        .crossfade(true)
-                        .memoryCachePolicy(CachePolicy.ENABLED)
-                        .diskCachePolicy(CachePolicy.ENABLED)
-                        .size(600, 400)
-                        .scale(Scale.FILL)
-                        .allowHardware(false)
-                        .build(),
-                    contentDescription = "게시글 이미지",
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(200.dp)
-                        .clip(RoundedCornerShape(12.dp)),
-                    contentScale = ContentScale.Crop,
-                    placeholder = painterResource(id = R.drawable.image_error_placeholder),
-                    error = painterResource(id = R.drawable.image_error_placeholder)
-                )
+                    AsyncImage(
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(post.imageUrls) // String 타입
+                            .crossfade(300) // 부드러운 전환
+                            .memoryCachePolicy(CachePolicy.ENABLED)
+                            .diskCachePolicy(CachePolicy.ENABLED)
+                            .networkCachePolicy(CachePolicy.ENABLED)
+                            .size(800, 600) // 원본 크기 유지 (압축용)
+                            .scale(Scale.FILL) // 전체 채우기
+                            .allowHardware(true) // 하드웨어 가속 활성화
+                            .transformations(
+                                // ✅ 서버 전송 전 압축 (메모리 절약)
+                                coil.transform.RoundedCornersTransformation(12.dp.value)
+                            )
+                            .build(),
+                        contentDescription = "게시글 이미지",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(200.dp)
+                            .clip(RoundedCornerShape(12.dp)),
+                        contentScale = ContentScale.Crop,
+                        placeholder = painterResource(id = R.drawable.image_loading_placeholder), // 로딩 전용
+                        error = painterResource(id = R.drawable.image_error_placeholder) // 에러 전용
+                    )
             }
 
             Spacer(modifier = Modifier.height(12.dp))
