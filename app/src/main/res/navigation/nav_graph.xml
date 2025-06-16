@@ -5,6 +5,7 @@
     android:id="@+id/nav_graph"
     app:startDestination="@id/homeFragment">
 
+    <!-- 🏠 홈 화면 (기본) -->
     <fragment
         android:id="@+id/homeFragment"
         android:name="com.example.kotlin_amateur.navi.home.HomeFragment"
@@ -15,41 +16,51 @@
         <action
             android:id="@+id/action_home_to_localPromo"
             app:destination="@id/localPromoFragment" />
-        <!-- 🔥 수정된 액션: postId 파라미터 전달 -->
         <action
             android:id="@+id/action_home_to_postDetail"
             app:destination="@id/postDetailFragment" />
-
+        
+        <!-- 🎯 프로필 메뉴에서 게시글 타입별 화면 이동 -->
+        <action
+            android:id="@+id/action_home_to_myPosts"
+            app:destination="@id/postListFragment" />
+        <action
+            android:id="@+id/action_home_to_likedPosts"
+            app:destination="@id/postListFragment" />
+        <action
+            android:id="@+id/action_home_to_recentViewed"
+            app:destination="@id/postListFragment" />
     </fragment>
 
+    <!-- 🗺️ 지도 화면 -->
     <fragment
         android:id="@+id/kakaoMapFragment"
         android:name="com.example.kotlin_amateur.navi.map.KakaoMapFragment"
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
+    <!-- ✍️ 글 추가 화면 -->
     <fragment
         android:id="@+id/floatingAddFragment"
         android:name="com.example.kotlin_amateur.post.FloatingAddFragment"
         android:label="글 추가" />
 
+    <!-- 🏘️ 지역 홍보 화면 -->
     <fragment
         android:id="@+id/localPromoFragment"
         android:label="지역 홍보" />
 
-    <!-- 🔥 수정된 PostDetailFragment 설정 -->
+    <!-- 📋 게시글 상세보기 -->
     <fragment
         android:id="@+id/postDetailFragment"
         android:name="com.example.kotlin_amateur.post.PostDetailFragment"
         android:label="게시글 상세보기">
 
-        <!-- 🎯 중요: postId argument 추가 -->
         <argument
             android:name="postId"
             app:argType="string"
             app:nullable="false"/>
 
-        <!-- 선택사항: 다른 필요한 데이터들 -->
         <argument
             android:name="title"
             android:defaultValue="@null"
@@ -58,6 +69,44 @@
         <action
             android:id="@+id/action_postDetail_to_postDetail"
             app:destination="@id/postDetailFragment" />
+    </fragment>
+
+    <!-- 🎯 새로 추가: 범용 게시글 목록 화면 (타입별 재사용) -->
+    <fragment
+        android:id="@+id/postListFragment"
+        android:name="com.example.kotlin_amateur.navi.profile.ProfilePostListFragment"
+        android:label="게시글 목록">
+        
+        <!-- 🔥 핵심: 게시글 타입 argument -->
+        <argument
+            android:name="postListType"
+            app:argType="string"
+            app:nullable="false"
+            android:defaultValue="HOME" />
+        
+        <!-- 선택사항: 추가 설정 -->
+        <argument
+            android:name="title"
+            app:argType="string"
+            app:nullable="true"
+            android:defaultValue="@null" />
+
+        <!-- 게시글 상세로 이동 -->
+        <action
+            android:id="@+id/action_postList_to_postDetail"
+            app:destination="@id/postDetailFragment" />
+        
+        <!-- 글 작성으로 이동 (내 게시글에서만) -->
+        <action
+            android:id="@+id/action_postList_to_addPost"
+            app:destination="@id/floatingAddFragment" />
+        
+        <!-- 뒤로가기 (홈으로) -->
+        <action
+            android:id="@+id/action_postList_to_home"
+            app:destination="@id/homeFragment"
+            app:popUpTo="@id/homeFragment"
+            app:popUpToInclusive="false" />
     </fragment>
 
 </navigation>

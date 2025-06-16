@@ -82,4 +82,11 @@ object NetworkModule {
     fun provideUserProfileApiService(retrofit: Retrofit): UserProfileApiService {
         return retrofit.create(UserProfileApiService::class.java)
     }
+    
+    // 🎯 새로 추가: ProfilePostApiService 제공
+    @Provides
+    @Singleton
+    fun provideProfilePostApiService(retrofit: Retrofit): ProfilePostApiService {
+        return retrofit.create(ProfilePostApiService::class.java)
+    }
 }

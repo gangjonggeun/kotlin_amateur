@@ -1,0 +1,119 @@
+package com.example.kotlin_amateur.post
+
+import android.content.Context
+import android.util.Log
+import androidx.paging.PagingSource
+import androidx.paging.PagingState
+import com.example.kotlin_amateur.core.PostListType
+import com.example.kotlin_amateur.remote.response.PostListResponse
+import com.example.kotlin_amateur.repository.ProfilePostRepository
+import com.example.kotlin_amateur.state.ApiResult
+
+/**
+ * 🎯 프로필 게시글 전용 PagingSource
+ * - 내 게시글, 좋아요한 글, 최근 본 글 전용
+ * - ProfilePostRepository 사용
+ * - 메모리 최적화: 에러 상황에서도 안전한 처리
+ */
+class ProfilePostPagingSource(
+    private val context: Context,
+    private val profilePostRepository: ProfilePostRepository,
+    private val postListType: PostListType
+) : PagingSource<Int, PostListResponse>() {
+
+    companion object {
+        private const val TAG = "ProfilePostPagingSource"
+        private const val STARTING_PAGE_INDEX = 0
+    }
+
+    override suspend fun load(params: LoadParams<Int>): LoadResult<Int, PostListResponse> {
+        return try {
+            val page = params.key ?: STARTING_PAGE_INDEX
+            val pageSize = params.loadSize
+
+            Log.d(TAG, "🔥 프로필 데이터 로딩 시작 - 타입: ${postListType.displayName}, 페이지: $page, 크기: $pageSize")
+
+            // 🎯 프로필 타입별 API 호출
+            val result = when (postListType) {
+                PostListType.MY_POSTS -> {
+                    Log.d(TAG, "📝 내 게시글 로딩")
+                    profilePostRepository.getMyPosts(context, page, pageSize)
+                }
+                
+                PostListType.LIKED_POSTS -> {
+                    Log.d(TAG, "❤️ 좋아요한 글 로딩")
+                    profilePostRepository.getLikedPosts(context, page, pageSize)
+                }
+                
+                PostListType.RECENT_VIEWED -> {
+                    Log.d(TAG, "👀 최근 본 글 로딩")
+                    profilePostRepository.getRecentViewedPosts(context, page, pageSize)
+                }
+                
+                PostListType.HOME -> {
+                    Log.e(TAG, "❌ HOME 타입은 ProfilePostPagingSource에서 지원하지 않습니다")
+                    ApiResult.Error(400, "HOME 타입은 PostPagingSource를 사용하세요")
+                }
+            }
+
+            // 🔍 결과 처리
+            when (result) {
+                is ApiResult.Success -> {
+                    val posts = result.data
+                    Log.d(TAG, "✅ 로딩 성공 - ${posts.size}개 아이템 (${postListType.displayName})")
+
+                    // 🎯 페이징 키 계산
+                    val prevKey = if (page == STARTING_PAGE_INDEX) null else page - 1
+                    val nextKey = if (posts.isEmpty() || posts.size < pageSize) {
+                        null // 더 이상 데이터 없음
+                    } else {
+                        page + 1
+                    }
+
+                    LoadResult.Page(
+                        data = posts,
+                        prevKey = prevKey,
+                        nextKey = nextKey
+                    )
+                }
+                
+                is ApiResult.Error -> {
+                    Log.e(TAG, "❌ 로딩 실패 [${result.code}] - ${result.message} (${postListType.displayName})")
+                    
+                    // 🛡️ 메모리 안전: Exception 대신 경량 에러 처리
+                    LoadResult.Error(
+                        RuntimeException("프로필 게시글 로딩 실패: ${result.message}")
+                    )
+                }
+                
+                is ApiResult.Loading -> {
+                    Log.w(TAG, "⚠️ 예상치 못한 로딩 상태 (${postListType.displayName})")
+                    LoadResult.Error(
+                        RuntimeException("로딩 상태 오류: ${result.message}")
+                    )
+                }
+            }
+
+        } catch (e: Exception) {
+            Log.e(TAG, "💥 프로필 게시글 로딩 예외 (${postListType.displayName})", e)
+            
+            // 🛡️ 메모리 안전: 가벼운 에러 메시지
+            LoadResult.Error(
+                RuntimeException("프로필 데이터 로딩 오류: ${e.message?.take(100) ?: "알 수 없는 오류"}")
+            )
+        }
+    }
+
+    /**
+     * 🔄 새로고침 시 키 계산
+     * - 현재 위치 기준으로 적절한 페이지 반환
+     */
+    override fun getRefreshKey(state: PagingState<Int, PostListResponse>): Int? {
+        return state.anchorPosition?.let { anchorPosition ->
+            val anchorPage = state.closestPageToPosition(anchorPosition)
+            anchorPage?.prevKey?.plus(1) ?: anchorPage?.nextKey?.minus(1)
+        }.also { refreshKey ->
+            Log.d(TAG, "🔄 새로고침 키: $refreshKey (${postListType.displayName})")
+        }
+    }
+}

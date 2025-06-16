@@ -25,6 +25,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.kotlin_amateur.R
+import com.example.kotlin_amateur.core.PostListType
 import com.example.kotlin_amateur.viewmodel.ProfileViewModel
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
@@ -38,7 +39,9 @@ fun RightSheetMenu(
     onMyCommentsClick: () -> Unit,
     onRecentViewsClick: () -> Unit,
     onSettingsClick: () -> Unit,
-    onLogoutClick: () -> Unit
+    onLogoutClick: () -> Unit,
+    // 🎯 Navigation 추가
+    onNavigateToPostList: (PostListType) -> Unit
 ) {
     val screenWidth = LocalConfiguration.current.screenWidthDp.dp
     val profileViewModel: ProfileViewModel = hiltViewModel()
@@ -162,31 +165,40 @@ fun RightSheetMenu(
 
                 Spacer(modifier = Modifier.height(32.dp))
 
-                // ✅ 메뉴 항목 - 로딩 중 비활성화
+                // ✅ 메뉴 항목 - 로딩 중 비활성화 + 🎯 Navigation 추가
                 Column {
                     MenuItem(
                         text = "내 게시글",
                         iconResId = R.drawable.ic_post,
                         enabled = !isLoading,
-                        onClick = onMyPostsClick
+                        onClick = { 
+                            onMyPostsClick()
+                            onNavigateToPostList(PostListType.MY_POSTS) // 🎯 내 게시글로 이동
+                        }
                     )
                     MenuItem(
                         text = "좋아요한 글",
                         iconResId = R.drawable.ic_like,
                         enabled = !isLoading,
-                        onClick = onLikedPostsClick
+                        onClick = { 
+                            onLikedPostsClick()
+                            onNavigateToPostList(PostListType.LIKED_POSTS) // 🎯 좋아요한 글로 이동
+                        }
                     )
                     MenuItem(
                         text = "내 댓글 보기",
                         iconResId = R.drawable.ic_comment,
                         enabled = !isLoading,
-                        onClick = onMyCommentsClick
+                        onClick = onMyCommentsClick // 댓글은 별도 처리 (추후 구현)
                     )
                     MenuItem(
                         text = "최근 본 글",
                         iconResId = R.drawable.ic_recent,
                         enabled = !isLoading,
-                        onClick = onRecentViewsClick
+                        onClick = { 
+                            onRecentViewsClick()
+                            onNavigateToPostList(PostListType.RECENT_VIEWED) // 🎯 최근 본 글로 이동
+                        }
                     )
                     MenuItem(
                         text = "설정",

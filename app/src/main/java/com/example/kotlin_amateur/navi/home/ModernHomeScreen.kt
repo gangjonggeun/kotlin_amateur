@@ -28,7 +28,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.paging.LoadState
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
-import com.example.kotlin_amateur.viewmodel.HomeViewModel
+import com.example.kotlin_amateur.core.PostListType
+import com.example.kotlin_amateur.viewmodel.PostListViewModel
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import coil.request.CachePolicy
@@ -37,6 +38,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.foundation.Image
 import com.example.kotlin_amateur.R
 import com.example.kotlin_amateur.remote.response.PostListResponse
+import com.example.kotlin_amateur.viewmodel.HomeViewModel
 
 // 🎨 브랜드 컬러 정의
 object BrandColors {
@@ -53,15 +55,23 @@ object BrandColors {
 fun ModernHomeScreen(
     onNavigateToAddPost: () -> Unit,
     onNavigateToPostDetail: (String, String?) -> Unit,
-    viewModel: HomeViewModel = hiltViewModel()
+    postListType: PostListType = PostListType.HOME, // 🎯 타입 매개변수 추가
+    onBackClick: (() -> Unit)? = null, // 🔙 뒤로가기 콜백 추가
+    viewModel: PostListViewModel = hiltViewModel()
 ) {
+    // 🔥 타입 설정
+    LaunchedEffect(postListType) {
+        viewModel.setPostListType(postListType)
+    }
+
     // 🔥 새로운 Paging3 StateFlow 상태 수집
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
     val postsPagingItems = viewModel.postsPagingFlow.collectAsLazyPagingItems()
+    val currentPostListType by viewModel.postListType.collectAsStateWithLifecycle()
 
     // UI 상태
     var isSearchActive by remember { mutableStateOf(false) }
-    var showSpeedDial by remember { mutableStateOf(true) }
+    var showSpeedDial by remember { mutableStateOf(currentPostListType == PostListType.HOME) } // 홈에서만 표시
 
     val context = LocalContext.current
 
@@ -70,23 +80,22 @@ fun ModernHomeScreen(
             .fillMaxSize()
             .background(
                 Brush.verticalGradient(
-                    colors = listOf(
-                        BrandColors.Secondary,
-                        Color.White
-                    )
+                    colors = PostListType.getGradientColors(currentPostListType) // 🎯 타입별 배경색
                 )
             )
     ) {
         Column(
             modifier = Modifier.fillMaxSize()
         ) {
-            // 🎯 모던한 상단 바 (기존 UI 유지)
+            // 🎯 모던한 상단 바 (타입별 타이틀)
             ModernTopBar(
                 searchQuery = searchQuery,
                 onSearchQueryChange = viewModel::updateSearchQuery,
                 isSearchActive = isSearchActive,
                 onSearchActiveChange = { isSearchActive = it },
-                viewModel = viewModel, // ✅ 추가
+                postListType = currentPostListType, // 🎯 타입 전달
+                onBackClick = onBackClick, // 🔙 뒤로가기 전달
+                viewModel = viewModel,
                 modifier = Modifier
                     .fillMaxWidth()
                     .zIndex(10f)
@@ -220,6 +229,8 @@ fun ModernTopBar(
     onSearchQueryChange: (String) -> Unit,
     isSearchActive: Boolean,
     onSearchActiveChange: (Boolean) -> Unit,
+    postListType: PostListType, // 🎯 타입 추가
+    onBackClick: (() -> Unit)? = null, // 🔙 뒤로가기 콜백 추가
     viewModel: HomeViewModel, // ✅ 추가
     modifier: Modifier = Modifier
 ) {
@@ -255,19 +266,47 @@ fun ModernTopBar(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // 타이틀
-                Column {
-                    Text(
-                        text = "안녕하세요! 👋",
-                        fontSize = 14.sp,
-                        color = Color.Gray
-                    )
-                    Text(
-                        text = "동네 이야기",
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = BrandColors.OnSurface
-                    )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    // 🔙 뒤로가기 버튼 (내 게시글/좋아요한 글/최근 본 글에서만 표시)
+                    if (onBackClick != null && postListType != PostListType.HOME) {
+                        IconButton(
+                            onClick = onBackClick,
+                            modifier = Modifier
+                                .background(
+                                    BrandColors.Primary.copy(alpha = 0.1f),
+                                    CircleShape
+                                )
+                        ) {
+                            Icon(
+                                Icons.Default.ArrowBack,
+                                contentDescription = "뒤로가기",
+                                tint = BrandColors.Primary
+                            )
+                        }
+                        
+                        Spacer(modifier = Modifier.width(12.dp))
+                    }
+                    
+                    // 타이틀
+                    Column {
+                        // 🎯 타입별 인사말과 타이틀 표시
+                        if (postListType == PostListType.HOME) {
+                            Text(
+                                text = "안녕하세요! 👋",
+                                fontSize = 14.sp,
+                                color = Color.Gray
+                            )
+                        }
+                        Text(
+                            text = postListType.displayName, // 🎯 타입별 타이틀
+                            fontSize = 22.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = BrandColors.OnSurface
+                        )
+                    }
                 }
 
                 // 검색 버튼

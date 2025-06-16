@@ -28,14 +28,7 @@ android {
         vectorDrawables.useSupportLibrary = true
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         
-        // 🛡️ Room 데이터베이스 최적화 설정
-        javaCompileOptions {
-            annotationProcessorOptions {
-                argument("room.schemaLocation", "$projectDir/schemas")
-                argument("room.incremental", "true")
-                argument("room.expandProjection", "true")
-            }
-        }
+
         
         vectorDrawables {
             useSupportLibrary = true
@@ -85,7 +78,7 @@ android {
             option("-Xmx1024m")
         }
         
-        // Room 스키마 검증 최적화
+        // 🔥 Room 검증 완전 비활성화
         arguments {
             arg("room.schemaLocation", "$projectDir/schemas")
             arg("room.incremental", "true")
@@ -149,12 +142,15 @@ dependencies {
     // ✅ 기타 라이브러리들 (libs 방식)
     implementation(libs.kakao.maps)
     implementation(libs.androidx.paging.compose)
-    
-    // 🛡️ Room 데이터베이스 최적화 (메모리 안전)
+
+    // ✅ Room 데이터베이스
     implementation("androidx.room:room-runtime:2.6.1")
     implementation("androidx.room:room-ktx:2.6.1")
     kapt("androidx.room:room-compiler:2.6.1")
-    
+
+    // KAPT가 컴파일 시점에 PC(Windows/Mac/Linux)에서 사용할 SQLite 드라이버
+    kapt("org.xerial:sqlite-jdbc:3.46.0.0") // 최신 버전은 달라질 수 있습니다.
+
     // SQLite 드라이버 명시적 추가 (호환성 문제 해결)
     implementation("androidx.sqlite:sqlite-ktx:2.4.0")
     

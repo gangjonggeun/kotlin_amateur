@@ -8,6 +8,7 @@ import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.PagingData
 import androidx.paging.cachedIn
+import com.example.kotlin_amateur.core.PostListType
 import com.example.kotlin_amateur.core.auth.TokenStore
 import com.example.kotlin_amateur.model.SearchHistory
 import com.example.kotlin_amateur.remote.response.PostListResponse
@@ -25,12 +26,23 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+/**
+ * 🚀 범용 PostListViewModel - 타입별 게시글 목록 처리
+ * - HOME: 전체 게시글
+ * - MY_POSTS: 내 게시글
+ * - LIKED_POSTS: 좋아요한 글
+ * - RECENT_VIEWED: 최근 본 글
+ */
 @HiltViewModel
-class HomeViewModel @Inject constructor(
+class PostListViewModel @Inject constructor(
     private val postRepository: PostRepository,
     private val searchHistoryRepository: SearchHistoryRepository,
     private val application: Application
 ) : ViewModel() {
+
+    // 🎯 게시글 목록 타입
+    private val _postListType = MutableStateFlow(PostListType.HOME)
+    val postListType: StateFlow<PostListType> = _postListType.asStateFlow()
 
     // 🔍 검색어 상태 (타이핑 중인 텍스트)
     private val _searchQuery = MutableStateFlow("")
@@ -39,7 +51,7 @@ class HomeViewModel @Inject constructor(
     // 🎯 실제 검색 실행용 상태 (지연 검색)
     private val _actualSearchQuery = MutableStateFlow("")
     
-    // 🔍 최근 검색어 조회
+    // 🔍 최근 검색어 조회 (홈에서만 사용)
     val recentSearches: Flow<List<SearchHistory>> = searchHistoryRepository.getRecentSearches()
 
     // 🛡️ 메모리 최적화된 지연 검색 (500ms 후 자동 검색)
@@ -51,7 +63,7 @@ class HomeViewModel @Inject constructor(
                 .collect { query ->
                     if (query.length >= 2) { // 2글자 이상만 자동 검색
                         _actualSearchQuery.value = query
-                        Log.d("HomeViewModel", "🔍 자동 검색 실행: '$query'")
+                        Log.d("PostListViewModel", "🔍 자동 검색 실행: '$query'")
                     } else if (query.isEmpty()) {
                         _actualSearchQuery.value = "" // 빈 문자열이면 전체 조회
                     }
@@ -59,7 +71,7 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    // 🔄 무한 스크롤 Paging 데이터 (지연 검색 적용)
+    // 🔄 무한 스크롤 Paging 데이터 (지연 검색 + 타입별 처리)
     val postsPagingFlow: Flow<PagingData<PostListResponse>> = 
         _actualSearchQuery.flatMapLatest { query ->
             Pager(
@@ -72,12 +84,24 @@ class HomeViewModel @Inject constructor(
                 pagingSourceFactory = {
                     PostPagingSource(
                         context = application.applicationContext,
-                        postRepository = postRepository,
-                        query = query.ifEmpty { null }
+                        postRepository = postRepository, // 홍 화면에서는 PostRepository 사용
+                        profilePostRepository = null, // 홍 화면에서는 사용 안함
+                        query = query.ifEmpty { null },
+                        postListType = _postListType.value // 🎯 타입별 처리
                     )
                 }
             ).flow.cachedIn(viewModelScope) // ✅ 메모리에 캐시 (화면 회전 등에서 유지)
         }
+
+    // 🎯 게시글 타입 변경
+    fun setPostListType(type: PostListType) {
+        if (_postListType.value != type) {
+            _postListType.value = type
+            _searchQuery.value = "" // 검색어 초기화
+            _actualSearchQuery.value = "" // 실제 검색어도 초기화
+            Log.d("PostListViewModel", "🎯 게시글 타입 변경: ${type.displayName}")
+        }
+    }
 
     // 🔍 검색어 업데이트 (타이핑만, 히스토리 저장 안함)
     fun updateSearchQuery(query: String) {
@@ -91,39 +115,47 @@ class HomeViewModel @Inject constructor(
         if (query.isNotEmpty()) {
             _actualSearchQuery.value = query
             
-            // ✅ 수동 검색만 히스토리 저장 (의미있는 검색어만)
-            viewModelScope.launch {
-                searchHistoryRepository.saveSearch(query)
-                Log.d("HomeViewModel", "🎯 수동 검색 실행 + 히스토리 저장: '$query'")
+            // ✅ 수동 검색만 히스토리 저장 (의미있는 검색어만) - 홈에서만
+            if (_postListType.value == PostListType.HOME) {
+                viewModelScope.launch {
+                    searchHistoryRepository.saveSearch(query)
+                    Log.d("PostListViewModel", "🎯 수동 검색 실행 + 히스토리 저장: '$query'")
+                }
             }
         }
     }
     
-    // 🔍 최근 검색어 클릭 시
+    // 🔍 최근 검색어 클릭 시 (홈에서만)
     fun onRecentSearchClick(searchHistory: SearchHistory) {
-        _searchQuery.value = searchHistory.query
-        _actualSearchQuery.value = searchHistory.query
-        
-        // ✅ 선택한 검색어도 시간 업데이트
-        viewModelScope.launch {
-            searchHistoryRepository.saveSearch(searchHistory.query)
-            Log.d("HomeViewModel", "🔍 최근 검색어 선택: '${searchHistory.query}'")
+        if (_postListType.value == PostListType.HOME) {
+            _searchQuery.value = searchHistory.query
+            _actualSearchQuery.value = searchHistory.query
+            
+            // ✅ 선택한 검색어도 시간 업데이트
+            viewModelScope.launch {
+                searchHistoryRepository.saveSearch(searchHistory.query)
+                Log.d("PostListViewModel", "🔍 최근 검색어 선택: '${searchHistory.query}'")
+            }
         }
     }
     
-    // ❌ 검색 기록 삭제
+    // ❌ 검색 기록 삭제 (홈에서만)
     fun deleteSearchHistory(query: String) {
-        viewModelScope.launch {
-            searchHistoryRepository.deleteSearch(query)
-            Log.d("HomeViewModel", "🗑️ 검색 기록 삭제: '$query'")
+        if (_postListType.value == PostListType.HOME) {
+            viewModelScope.launch {
+                searchHistoryRepository.deleteSearch(query)
+                Log.d("PostListViewModel", "🗑️ 검색 기록 삭제: '$query'")
+            }
         }
     }
     
-    // 🧹 모든 검색 기록 삭제
+    // 🧹 모든 검색 기록 삭제 (홈에서만)
     fun clearAllSearchHistory() {
-        viewModelScope.launch {
-            searchHistoryRepository.clearAllHistory()
-            Log.d("HomeViewModel", "🧹 모든 검색 기록 삭제")
+        if (_postListType.value == PostListType.HOME) {
+            viewModelScope.launch {
+                searchHistoryRepository.clearAllHistory()
+                Log.d("PostListViewModel", "🧹 모든 검색 기록 삭제")
+            }
         }
     }
     
@@ -151,25 +183,23 @@ class HomeViewModel @Inject constructor(
                 }
 
                 if (response.isSuccessful) {
-                    Log.d("HomeViewModel", "💖 좋아요 상태 변경 성공: $isLiked")
+                    Log.d("PostListViewModel", "💖 좋아요 상태 변경 성공: $isLiked")
                     callback(true)
                 } else {
-                    Log.e("HomeViewModel", "❌ 좋아요 상태 변경 실패: ${response.code()}")
+                    Log.e("PostListViewModel", "❌ 좋아요 상태 변경 실패: ${response.code()}")
                     callback(false)
                 }
             } catch (e: Exception) {
-                Log.e("HomeViewModel", "❌ 좋아요 처리 중 오류: ${e.message}", e)
+                Log.e("PostListViewModel", "❌ 좋아요 처리 중 오류: ${e.message}", e)
                 callback(false)
             }
         }
     }
 
     // 🔥 기존 API를 사용하는 메서드들 (역호환성을 위해 유지)
-    // 이제 Paging3를 사용하므로 직접 호출할 필요 없음
     @Deprecated("무한 스크롤로 대체됨. postsPagingFlow 사용 권장")
     fun loadDataFromServer() {
-        // Paging3로 대체되었으므로 비우거나 제거 예정
-        Log.d("HomeViewModel", "무한 스크롤로 대체되었습니다. postsPagingFlow를 사용하세요.")
+        Log.d("PostListViewModel", "무한 스크롤로 대체되었습니다. postsPagingFlow를 사용하세요.")
     }
 
     // 🔄 기존 새로고침 메서드 (호환성 유지)
@@ -177,3 +207,6 @@ class HomeViewModel @Inject constructor(
         refresh()
     }
 }
+
+// 🔥 기존 HomeViewModel 타입 에이리어스 (호환성 유지)
+typealias HomeViewModel = PostListViewModel

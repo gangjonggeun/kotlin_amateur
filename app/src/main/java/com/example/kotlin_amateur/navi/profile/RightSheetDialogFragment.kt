@@ -7,12 +7,18 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.view.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.platform.ComposeView
 import androidx.core.view.WindowCompat
 import androidx.fragment.app.DialogFragment
+import androidx.navigation.fragment.findNavController
 import com.example.kotlin_amateur.R
 import com.example.kotlin_amateur.login.ProfileSetupBottomSheet
+import com.example.kotlin_amateur.core.PostListType
+import com.example.kotlin_amateur.navi.home.ModernHomeScreen
+import dagger.hilt.android.AndroidEntryPoint
 
+@AndroidEntryPoint
 class RightSheetDialogFragment : DialogFragment() {
 
     override fun onStart() {
@@ -49,20 +55,63 @@ class RightSheetDialogFragment : DialogFragment() {
     ): View {
         return ComposeView(requireContext()).apply {
             setContent {
-                // RightSheetMenu에 전달할 콜백들 연결
-                RightSheetMenu(
-                    onEditProfileClick = {
-                        Log.d("RightSheet", "🔥 프로필 편집 클릭됨")
-                        // dismiss() 하지 말고 바로 BottomSheet 띄우기
-                        showProfileEditBottomSheet() },
-                    onEditNicknameClick = { /* 닉네임 수정 바텀시트 띄우기 */ },
-                    onMyPostsClick = { /* 내 게시글 프래그먼트로 이동 */ },
-                    onLikedPostsClick = { /* 좋아요한 글 */ },
-                    onMyCommentsClick = { /* 댓글 보기 */ },
-                    onRecentViewsClick = { /* 최근 본 글 */ },
-                    onSettingsClick = { /* 설정 화면 */ },
-                    onLogoutClick = { dismiss() } // 예: 로그아웃 후 시트 닫기
-                )
+                // 🎯 현재 표시할 화면 상태 관리
+                var currentScreen by remember { mutableStateOf<PostListType?>(null) }
+                
+                when (currentScreen) {
+                    null -> {
+                        // 🏠 메인 메뉴 화면
+                        RightSheetMenu(
+                            onEditProfileClick = {
+                                Log.d("RightSheet", "🔥 프로필 편집 클릭됨")
+                                showProfileEditBottomSheet()
+                            },
+                            onEditNicknameClick = { /* 닉네임 수정 바텀시트 */ },
+                            onMyPostsClick = {
+                                navigateToProfilePostList(PostListType.MY_POSTS)
+                                dismiss()
+                            },
+                    onLikedPostsClick = {
+                        navigateToProfilePostList(PostListType.LIKED_POSTS) 
+                        dismiss()
+                    },
+                    onMyCommentsClick = { /* 댓글 보기 - 추후 구현 */ },
+                    onRecentViewsClick = {
+                        navigateToProfilePostList(PostListType.RECENT_VIEWED)
+                        dismiss()
+                    },
+                            onSettingsClick = { /* 설정 화면 */ },
+                            onLogoutClick = { dismiss() },
+                            // 🎯 Navigation 추가
+                            onNavigateToPostList = { postListType ->
+                                currentScreen = postListType
+                            }
+                        )
+                    }
+                    
+                    else -> {
+                        // 📝 게시글 목록 화면 (ModernHomeScreen 재사용)
+                        ModernHomeScreen(
+                            postListType = currentScreen!!, // Non-null assertion 안전
+                            onBackClick = {
+                                // 🔙 메뉴로 돌아가기
+                                currentScreen = null
+                            },
+                            onNavigateToAddPost = {
+                                // 글 작성 기능 (내 게시글에서만)
+                                Log.d("RightSheet", "✏️ 글 작성 클릭")
+                            },
+                            onNavigateToPostDetail = { postId, title ->
+                                // 게시글 상세 보기
+                                Log.d("RightSheet", "📖 게시글 상세: $postId")
+                                // 여기서 게시글 상세 화면으로 네비게이션 가능
+                            }
+                        )
+                        
+                        // 🔙 뒤로가기 효과 (메뉴로 돌아가기)
+                        // 실제로는 뒤로가기 버튼을 추가하거나, 스와이프 제스처 등으로 처리 가능
+                    }
+                }
             }
         }
     }
@@ -82,6 +131,31 @@ class RightSheetDialogFragment : DialogFragment() {
 
         } catch (e: Exception) {
             Log.e("RightSheet", "❌ BottomSheet show() 실패: ${e.message}", e)
+        }
+    }
+    
+    /**
+     * 🎯 프로필 게시글 목록 화면으로 이동
+     * - Navigation Component 사용으로 전체화면 이동
+     * - 메모리 안전: Fragment 사용으로 생명주기 관리
+     */
+    private fun navigateToProfilePostList(postListType: PostListType) {
+        try {
+            Log.d("RightSheet", "🚀 navigateToProfilePostList: ${postListType.displayName}")
+            
+            // 🚀 간단한 방법: Fragment 직접 생성 및 교체
+            val fragment = ProfilePostListFragment.newInstance(postListType)
+            
+            // 🎯 MainActivity의 메인 컨테이너에 전체화면으로 표시
+            requireActivity().supportFragmentManager.beginTransaction()
+                .replace(android.R.id.content, fragment)
+                .addToBackStack("ProfilePostList_${postListType.name}")
+                .commit()
+                
+            Log.d("RightSheet", "✅ Fragment 교체 성공")
+            
+        } catch (e: Exception) {
+            Log.e("RightSheet", "❌ Fragment 이동 실패: ${e.message}", e)
         }
     }
 }
