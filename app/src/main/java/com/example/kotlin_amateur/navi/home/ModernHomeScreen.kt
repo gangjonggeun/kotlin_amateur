@@ -57,17 +57,71 @@ fun ModernHomeScreen(
     onNavigateToPostDetail: (String, String?) -> Unit,
     postListType: PostListType = PostListType.HOME, // 🎯 타입 매개변수 추가
     onBackClick: (() -> Unit)? = null, // 🔙 뒤로가기 콜백 추가
-    viewModel: PostListViewModel = hiltViewModel()
+    homeViewModel: PostListViewModel? = null, // 🏠 홈용 ViewModel (선택적)
+    profileViewModel: com.example.kotlin_amateur.viewmodel.ProfilePostViewModel? = null // 📝 프로필용 ViewModel (선택적)
 ) {
+    // 🎯 PostListType에 따라 적절한 ViewModel 선택
+    val isProfileType = postListType in listOf(
+        PostListType.MY_POSTS, 
+        PostListType.LIKED_POSTS, 
+        PostListType.RECENT_VIEWED
+    )
+    
+    // ViewModel 자동 선택 및 생성 - 우선순위: 전달받은 ViewModel > 새로 생성
+    val currentHomeViewModel: PostListViewModel = homeViewModel ?: hiltViewModel()
+    val currentProfileViewModel: com.example.kotlin_amateur.viewmodel.ProfilePostViewModel? = 
+        when {
+            // 1. ProfileViewModel이 명시적으로 전달된 경우 우선 사용
+            profileViewModel != null -> {
+                android.util.Log.d("ModernHomeScreen", "✅ ProfileViewModel 전달받음: $profileViewModel")
+                profileViewModel
+            }
+            // 2. Profile 타입이지만 전달받지 못한 경우 새로 생성
+            isProfileType -> {
+                android.util.Log.d("ModernHomeScreen", "🔄 ProfileViewModel 새로 생성")
+                hiltViewModel()
+            }
+            // 3. Profile 타입이 아닌 경우 null
+            else -> {
+                android.util.Log.d("ModernHomeScreen", "🏠 HomeViewModel 사용 (Profile 타입 아님)")
+                null
+            }
+        }
+    
+    // 🎯 HomeViewModel도 필요 (검색 기능용)
+    val homeViewModelForSearch: HomeViewModel = hiltViewModel()
     // 🔥 타입 설정
     LaunchedEffect(postListType) {
-        viewModel.setPostListType(postListType)
+        if (isProfileType) {
+            currentProfileViewModel?.setPostListType(postListType)
+        } else {
+            currentHomeViewModel.setPostListType(postListType)
+        }
     }
 
-    // 🔥 새로운 Paging3 StateFlow 상태 수집
-    val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
-    val postsPagingItems = viewModel.postsPagingFlow.collectAsLazyPagingItems()
-    val currentPostListType by viewModel.postListType.collectAsStateWithLifecycle()
+    // 🔥 새로운 Paging3 StateFlow 상태 수집 (타입별 ViewModel 분기)
+    val searchQuery by if (isProfileType) {
+        // 프로필 타입에서는 검색 비활성화
+        remember { mutableStateOf("") }
+    } else {
+        homeViewModelForSearch.searchQuery.collectAsStateWithLifecycle(initialValue = "")
+    }
+
+
+
+    val postsPagingItems = if (isProfileType) {
+        // 📝 프로필 ViewModel 사용
+        currentProfileViewModel!!.profilePostsPagingFlow.collectAsLazyPagingItems()
+    } else {
+        // 🏠 홈 ViewModel 사용
+        currentHomeViewModel.postsPagingFlow.collectAsLazyPagingItems()
+    }
+    
+    val currentPostListType by if (isProfileType) {
+        currentProfileViewModel!!.postListType.collectAsStateWithLifecycle()
+    } else {
+        currentHomeViewModel.postListType.collectAsStateWithLifecycle()
+    }
 
     // UI 상태
     var isSearchActive by remember { mutableStateOf(false) }
@@ -90,12 +144,12 @@ fun ModernHomeScreen(
             // 🎯 모던한 상단 바 (타입별 타이틀)
             ModernTopBar(
                 searchQuery = searchQuery,
-                onSearchQueryChange = viewModel::updateSearchQuery,
+                onSearchQueryChange = homeViewModelForSearch::updateSearchQuery,
                 isSearchActive = isSearchActive,
                 onSearchActiveChange = { isSearchActive = it },
                 postListType = currentPostListType, // 🎯 타입 전달
                 onBackClick = onBackClick, // 🔙 뒤로가기 전달
-                viewModel = viewModel,
+                viewModel = homeViewModelForSearch,
                 modifier = Modifier
                     .fillMaxWidth()
                     .zIndex(10f)
@@ -124,18 +178,31 @@ fun ModernHomeScreen(
                             ModernPostCard(
                                 post = post,
                                 onPostClick = {
+                                    android.util.Log.d("ModernHomeScreen", "🎯 게시글 클릭: postId=${post.postId}, title=${post.postTitle}")
                                     onNavigateToPostDetail(post.postId, post.postTitle)
                                 },
                                 onLikeClick = {
-                                    viewModel.toggleLike(post.postId, !post.isLikedByCurrentUser) { success ->
-                                        if (!success) {
-                                            android.util.Log.e("ModernHomeScreen", "좋아요 실패")
+                                    // 🔥 PostDetailRepository를 사용한 간단한 토글
+                                    if (isProfileType) {
+                                        // 프로필에서는 좋아요 기능 비활성화 또는 별도 처리
+                                        android.util.Log.d("ModernHomeScreen", "프로필에서 좋아요 클릭: ${post.postId}")
+                                    } else {
+                                        // 🎨 간단한 토글 방식
+                                        currentHomeViewModel.toggleLike(post.postId) { success ->
+                                            if (!success) {
+                                                android.util.Log.e("ModernHomeScreen", "좋아요 실패: ${post.postId}")
+                                            } else {
+                                                android.util.Log.d("ModernHomeScreen", "좋아요 성공: ${post.postId}")
+                                                // 성공 시 페이지 새로고침으로 UI 업데이트
+                                                postsPagingItems.refresh()
+                                            }
                                         }
                                     }
                                 },
                                 onProfileClick = { userId ->
                                     println("프로필 클릭: $userId")
-                                }
+                                },
+                                postListType = currentPostListType // 🎯 타입 전달
                             )
                         } else {
                             // 로딩 아이템
@@ -214,7 +281,7 @@ fun ModernHomeScreen(
             ModernSpeedDial(
                 onAddPostClick = onNavigateToAddPost,
                 onLocationPromoteClick = {
-                    println("지역 홍보 기능")
+                    println("가게 홍보 기능")
                 },
                 modifier = Modifier.padding(16.dp)
             )
@@ -491,10 +558,17 @@ fun SearchTextField(
 fun ModernPostCard(
     post: PostListResponse,
     onPostClick: () -> Unit,
-    onLikeClick: () -> Unit,
+    onLikeClick: () -> Unit, // 🔄 단순하게 변경
     onProfileClick: (String) -> Unit,
+    postListType: PostListType = PostListType.HOME, // 🎯 타입 추가
     modifier: Modifier = Modifier
 ) {
+    // 🔄 더보기 메뉴 상태 관리
+    var showMoreMenu by remember { mutableStateOf(false) }
+    
+    // ✅ Context를 Composable 영역에서 미리 가져오기
+    val context = LocalContext.current
+    
     Card(
         onClick = onPostClick,
         modifier = modifier.fillMaxWidth(),
@@ -573,13 +647,107 @@ fun ModernPostCard(
                     )
                 }
 
-                // 더보기 버튼
-                IconButton(onClick = { /* 더보기 메뉴 */ }) {
-                    Icon(
-                        Icons.Default.MoreVert,
-                        contentDescription = "더보기",
-                        tint = Color.Gray
-                    )
+                // 🎯 타입별 더보기 버튼
+                Box {
+                    IconButton(onClick = { showMoreMenu = true }) {
+                        Icon(
+                            Icons.Default.MoreVert,
+                            contentDescription = "더보기",
+                            tint = Color.Gray
+                        )
+                    }
+                    
+                    // 🔄 타입별 드롭다운 메뉴
+                    DropdownMenu(
+                        expanded = showMoreMenu,
+                        onDismissRequest = { showMoreMenu = false }
+                    ) {
+                        when (postListType) {
+                            PostListType.MY_POSTS -> {
+                                // 📝 내 게시글: 수정하기, 삭제하기
+                                DropdownMenuItem(
+                                    text = { Text("수정하기") },
+                                    onClick = {
+                                        showMoreMenu = false
+                                        // TODO: 수정 기능 구현
+                                        android.widget.Toast.makeText(
+                                            context, // ✅ 미리 가져온 context 사용
+                                            "수정 기능은 추후 구현 예정입니다",
+                                            android.widget.Toast.LENGTH_SHORT
+                                        ).show()
+                                    },
+                                    leadingIcon = {
+                                        Icon(
+                                            Icons.Default.Edit,
+                                            contentDescription = null,
+                                            tint = Color.Blue
+                                        )
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("삭제하기") },
+                                    onClick = {
+                                        showMoreMenu = false
+                                        // TODO: 삭제 기능 구현
+                                        android.widget.Toast.makeText(
+                                            context, // ✅ 미리 가져온 context 사용
+                                            "삭제 기능은 추후 구현 예정입니다",
+                                            android.widget.Toast.LENGTH_SHORT
+                                        ).show()
+                                    },
+                                    leadingIcon = {
+                                        Icon(
+                                            Icons.Default.Delete,
+                                            contentDescription = null,
+                                            tint = Color.Red
+                                        )
+                                    }
+                                )
+                            }
+                            
+                            else -> {
+                                // 🏠 홈, 좋아요한 글, 최근 본 글: 신고하기, 북마크 저장
+                                DropdownMenuItem(
+                                    text = { Text("신고하기") },
+                                    onClick = {
+                                        showMoreMenu = false
+                                        // TODO: 신고 기능 구현
+                                        android.widget.Toast.makeText(
+                                            context, // ✅ 미리 가져온 context 사용
+                                            "신고 기능은 추후 구현 예정입니다",
+                                            android.widget.Toast.LENGTH_SHORT
+                                        ).show()
+                                    },
+                                    leadingIcon = {
+                                        Icon(
+                                            Icons.Default.Warning,
+                                            contentDescription = null,
+                                            tint = Color.Red
+                                        )
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("북마크 저장") },
+                                    onClick = {
+                                        showMoreMenu = false
+                                        // TODO: 북마크 기능 구현
+                                        android.widget.Toast.makeText(
+                                            context, // ✅ 미리 가져온 context 사용
+                                            "북마크 기능은 추후 구현 예정입니다",
+                                            android.widget.Toast.LENGTH_SHORT
+                                        ).show()
+                                    },
+                                    leadingIcon = {
+                                        Icon(
+                                            Icons.Default.Bookmark,
+                                            contentDescription = null,
+                                            tint = Color.Cyan
+                                        )
+                                    }
+                                )
+                            }
+                        }
+                    }
                 }
             }
 
@@ -895,10 +1063,10 @@ fun ModernSpeedDial(
                     }
                 )
 
-                // 지역 홍보 버튼
+                // 가게 홍보 버튼
                 SpeedDialOption(
                     icon = Icons.Default.LocationOn,
-                    label = "지역 홍보",
+                    label = "가게 홍보",
                     backgroundColor = Color(0xFF51CF66),
                     onClick = {
                         onLocationPromoteClick()
@@ -945,14 +1113,16 @@ fun SpeedDialOption(
         // 라벨
         Card(
             colors = CardDefaults.cardColors(
-                containerColor = Color.Black.copy(alpha = 0.8f)
+                containerColor = Color.White.copy(alpha = 0.95f) // ✅ 밝은 희색 배경
             ),
-            shape = RoundedCornerShape(8.dp)
+            shape = RoundedCornerShape(8.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp) // 그림자 추가
         ) {
             Text(
                 text = label,
-                color = Color.White,
+                color = Color.Black, // ✅ 검은색 텍스트
                 fontSize = 12.sp,
+                fontWeight = FontWeight.Medium, // 좀 더 두껋게
                 modifier = Modifier.padding(
                     horizontal = 12.dp,
                     vertical = 6.dp

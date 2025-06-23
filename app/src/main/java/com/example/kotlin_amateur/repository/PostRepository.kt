@@ -61,10 +61,6 @@ class PostRepository @Inject constructor(
         }
     }
 
-//    // 🔄 기존 방식 (호환성 유지)
-//    suspend fun getPostsList(accessToken: String): Response<List<PostListResponse>> {
-//        return apiService.getPostsForApp("Bearer $accessToken")
-//    }
     // 좋아요 추가
     suspend fun likePost(accessToken: String, postId: String): Response<Unit> {
         return apiService.likePost("Bearer $accessToken", postId)

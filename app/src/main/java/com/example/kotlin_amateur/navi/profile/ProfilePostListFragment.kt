@@ -8,9 +8,12 @@ import android.view.ViewGroup
 import androidx.compose.ui.platform.ComposeView
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
+import androidx.navigation.fragment.findNavController
 import com.example.kotlin_amateur.core.PostListType
 import com.example.kotlin_amateur.navi.home.ModernHomeScreen
 import com.example.kotlin_amateur.viewmodel.ProfilePostViewModel
+import com.example.kotlin_amateur.R
+import com.example.kotlin_amateur.navi.profile.ProfilePostListFragmentDirections
 import dagger.hilt.android.AndroidEntryPoint
 
 /**
@@ -39,7 +42,12 @@ class ProfilePostListFragment : Fragment() {
     private val viewModel: ProfilePostViewModel by viewModels()
 
     private val postListType: PostListType by lazy {
-        val typeName = arguments?.getString(ARG_POST_LIST_TYPE) ?: PostListType.MY_POSTS.name
+        // ✅ Navigation Component argument 사용 (nav_graph.xml에 정의된 이름)
+        val typeName = arguments?.getString("postListType") 
+            ?: arguments?.getString(ARG_POST_LIST_TYPE) // 폴백: 기존 방식도 지원
+            ?: PostListType.MY_POSTS.name
+        
+        android.util.Log.d(TAG, "📦 Argument 수신: $typeName")
         PostListType.valueOf(typeName)
     }
 
@@ -67,20 +75,41 @@ class ProfilePostListFragment : Fragment() {
                         Log.d(TAG, "✏️ 글 작성 클릭")
                     },
                     onNavigateToPostDetail = { postId, title ->
-                        // 📖 게시글 상세 보기
-                        Log.d(TAG, "📖 게시글 상세: $postId, 제목: $title")
-                        // 여기서 Navigation으로 상세 화면 이동 가능
-                    }
-                    // 🔥 ModernHomeScreen이 ProfilePostViewModel을 자동으로 감지하도록
-                    // hiltViewModel()를 내부에서 사용하게 되어 있다면 별도 전달 불필요
+                        // 📖 게시글 상세 보기 - ProfilePostListFragment의 action 사용
+                        Log.d(TAG, "📖 프로파일 포스트 프래그먼트에서 게시글 상세 이동: postId=$postId, title=$title")
+                        navigateToPostDetail(postId, title)
+                    },
+                    // 🔥 ProfilePostViewModel 명시적 전달
+                    profileViewModel = viewModel,
+                    homeViewModel = null // Profile에서는 HomeViewModel 사용 안함
                 )
             }
         }
     }
 
-    override fun onResume() {
-        super.onResume()
-        // 📊 화면 복귀 시 통계 새로고침
-        viewModel.loadProfileStats()
+
+    // 🎯 게시글 상세 페이지 네비게이션 (메모리 안전)
+    private fun navigateToPostDetail(postId: String, title: String? = null) {
+        try {
+            // ✅ Safe Navigation: null 체크
+            val navController = findNavController()
+
+            // 🎯 올바른 Navigation 방식: ProfilePostListFragment의 action 사용
+            val action = ProfilePostListFragmentDirections.actionPostListToPostDetail(
+                postId = postId,
+                title = title ?: "게시글 상세" // 기본 제목
+            )
+
+            navController.navigate(action)
+
+        } catch (e: Exception) {
+            // ❌ Exception 대신 가벼운 로깅 (50바이트 vs 3MB)
+            android.util.Log.e("ProfilePostListFragment", "네비게이션 실패: postId=$postId")
+        }
     }
+//    override fun onResume() {
+//        super.onResume()
+//        // 📊 화면 복귀 시 통계 새로고침
+//        viewModel.loadProfileStats()
+//    }
 }

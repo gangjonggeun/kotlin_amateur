@@ -54,8 +54,12 @@ class HomeFragment : Fragment() {
                         onNavigateToAddPost = {
                             navigateToAddPost()
                         },
-                        // ✅ ViewModel 수동 주입 (메모리 제어)
-                        viewModel = homeViewModel
+                        // 🏠 홈 타입으로 설정 (기본값)
+                        postListType = com.example.kotlin_amateur.core.PostListType.HOME,
+                        // 🔙 뒤로가기 버튼 비활성화 (홈에서는 불필요)
+                        onBackClick = null,
+                        // ✅ HomeViewModel 전달 (기존 방식 유지)
+                        homeViewModel = null // ModernHomeScreen에서 hiltViewModel() 사용
                     )
                 }
             }

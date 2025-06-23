@@ -171,19 +171,13 @@ fun RightSheetMenu(
                         text = "내 게시글",
                         iconResId = R.drawable.ic_post,
                         enabled = !isLoading,
-                        onClick = { 
-                            onMyPostsClick()
-                            onNavigateToPostList(PostListType.MY_POSTS) // 🎯 내 게시글로 이동
-                        }
+                        onClick = onMyPostsClick // ✅ 중복 제거
                     )
                     MenuItem(
                         text = "좋아요한 글",
                         iconResId = R.drawable.ic_like,
                         enabled = !isLoading,
-                        onClick = { 
-                            onLikedPostsClick()
-                            onNavigateToPostList(PostListType.LIKED_POSTS) // 🎯 좋아요한 글로 이동
-                        }
+                        onClick = onLikedPostsClick // ✅ 중복 제거
                     )
                     MenuItem(
                         text = "내 댓글 보기",
@@ -195,10 +189,7 @@ fun RightSheetMenu(
                         text = "최근 본 글",
                         iconResId = R.drawable.ic_recent,
                         enabled = !isLoading,
-                        onClick = { 
-                            onRecentViewsClick()
-                            onNavigateToPostList(PostListType.RECENT_VIEWED) // 🎯 최근 본 글로 이동
-                        }
+                        onClick = onRecentViewsClick // ✅ 중복 제거
                     )
                     MenuItem(
                         text = "설정",

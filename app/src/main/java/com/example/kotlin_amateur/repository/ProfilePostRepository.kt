@@ -56,15 +56,15 @@ class ProfilePostRepository @Inject constructor(
             val response = when (postListType) {
                 PostListType.MY_POSTS -> {
                     Log.d(TAG, "📝 내 게시글 조회")
-                    profilePostApi.getMyPosts(page, size)
+                    profilePostApi.getMyPosts(bearerToken,page, size)
                 }
                 PostListType.LIKED_POSTS -> {
                     Log.d(TAG, "❤️ 좋아요한 글 조회") 
-                    profilePostApi.getLikedPosts(page, size)
+                    profilePostApi.getLikedPosts(bearerToken,page, size)
                 }
                 PostListType.RECENT_VIEWED -> {
                     Log.d(TAG, "👀 최근 본 글 조회")
-                    profilePostApi.getRecentViewedPosts(page, size)
+                    profilePostApi.getRecentViewedPosts(bearerToken,page, size)
                 }
                 PostListType.HOME -> {
                     throw IllegalArgumentException("HOME 타입은 PostRepository를 사용하세요")
@@ -145,7 +145,7 @@ class ProfilePostRepository @Inject constructor(
             val token = TokenStore.getAccessToken(context)
                 ?: throw Exception("로그인이 필요합니다")
             
-            val response = profilePostApi.removeRecentViewedPost(postId)
+            val response = profilePostApi.removeRecentViewedPost(token, postId)
             
             if (response.isSuccessful) {
                 response.body()?.let { apiResponse ->
@@ -180,7 +180,7 @@ class ProfilePostRepository @Inject constructor(
             val token = TokenStore.getAccessToken(context)
                 ?: throw Exception("로그인이 필요합니다")
             
-            val response = profilePostApi.clearAllRecentViewedPosts()
+            val response = profilePostApi.clearAllRecentViewedPosts(token)
             
             if (response.isSuccessful) {
                 response.body()?.let { apiResponse ->

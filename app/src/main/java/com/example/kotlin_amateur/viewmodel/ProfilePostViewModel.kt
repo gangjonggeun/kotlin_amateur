@@ -78,10 +78,10 @@ class ProfilePostViewModel @Inject constructor(
             ).flow.cachedIn(viewModelScope)
         }
 
-    init {
-        // 🚀 초기 통계 로딩
-        loadProfileStats()
-    }
+//    init {
+//        // 🚀 초기 통계 로딩
+////        loadProfileStats()
+//    }
 
     /**
      * 🎯 프로필 게시글 타입 변경
@@ -150,7 +150,7 @@ class ProfilePostViewModel @Inject constructor(
                         Log.d(TAG, "✅ 최근 본 글 삭제 성공")
                         onResult(true, "삭제되었습니다")
                         // 통계 새로고침
-                        loadProfileStats()
+//                        loadProfileStats()
                     }
                     is ApiResult.Error -> {
                         Log.e(TAG, "❌ 최근 본 글 삭제 실패 [${result.code}]: ${result.message}")
@@ -185,7 +185,7 @@ class ProfilePostViewModel @Inject constructor(
                         Log.d(TAG, "✅ 최근 본 글 전체 삭제 성공")
                         onResult(true, "모든 기록이 삭제되었습니다")
                         // 통계 새로고침
-                        loadProfileStats()
+//                        loadProfileStats()
                     }
                     is ApiResult.Error -> {
                         Log.e(TAG, "❌ 최근 본 글 전체 삭제 실패 [${result.code}]: ${result.message}")
@@ -217,7 +217,7 @@ class ProfilePostViewModel @Inject constructor(
      */
     fun refresh() {
         Log.d(TAG, "🔄 프로필 게시글 새로고침")
-        loadProfileStats()
+//        loadProfileStats()
         // Paging은 자동으로 새로고침됨 (swipe-to-refresh)
     }
 
@@ -238,13 +238,7 @@ class ProfilePostViewModel @Inject constructor(
         }
     }
 
-    /**
-     * 🎯 타입별 표시 이름 반환 (통계와 함께)
-     */
-    fun getDisplayNameWithCount(type: PostListType): String {
-        val count = getPostCountByType(type)
-        return "${type.displayName} ($count)"
-    }
+
 
     // 🔥 메모리 정리 (ViewModel 소멸 시)
     override fun onCleared() {

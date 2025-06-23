@@ -48,7 +48,7 @@
     <!-- 🏘️ 지역 홍보 화면 -->
     <fragment
         android:id="@+id/localPromoFragment"
-        android:label="지역 홍보" />
+        android:label="가게 홍보" />
 
     <!-- 📋 게시글 상세보기 -->
     <fragment
@@ -91,7 +91,7 @@
             app:nullable="true"
             android:defaultValue="@null" />
 
-        <!-- 게시글 상세로 이동 -->
+        <!-- 🎯 게시글 상세로 이동 - 새로 추가! -->
         <action
             android:id="@+id/action_postList_to_postDetail"
             app:destination="@id/postDetailFragment" />

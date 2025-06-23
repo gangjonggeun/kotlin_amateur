@@ -136,26 +136,28 @@ class RightSheetDialogFragment : DialogFragment() {
     
     /**
      * 🎯 프로필 게시글 목록 화면으로 이동
-     * - Navigation Component 사용으로 전체화면 이동
+     * - Navigation Component 사용으로 안전한 이동
      * - 메모리 안전: Fragment 사용으로 생명주기 관리
      */
     private fun navigateToProfilePostList(postListType: PostListType) {
         try {
             Log.d("RightSheet", "🚀 navigateToProfilePostList: ${postListType.displayName}")
             
-            // 🚀 간단한 방법: Fragment 직접 생성 및 교체
-            val fragment = ProfilePostListFragment.newInstance(postListType)
+            // ✅ 올바른 Navigation Component 사용
+            val navController = findNavController()
             
-            // 🎯 MainActivity의 메인 컨테이너에 전체화면으로 표시
-            requireActivity().supportFragmentManager.beginTransaction()
-                .replace(android.R.id.content, fragment)
-                .addToBackStack("ProfilePostList_${postListType.name}")
-                .commit()
-                
-            Log.d("RightSheet", "✅ Fragment 교체 성공")
+            // 📦 Bundle로 argument 정확히 전달
+            val bundle = Bundle().apply {
+                putString("postListType", postListType.name)
+                Log.d("RightSheet", "📦 Bundle 생성: postListType=${postListType.name}")
+            }
+            
+            // 🎯 nav_graph.xml에 정의된 postListFragment로 이동
+            navController.navigate(R.id.postListFragment, bundle)
+            Log.d("RightSheet", "✅ Navigation 성공")
             
         } catch (e: Exception) {
-            Log.e("RightSheet", "❌ Fragment 이동 실패: ${e.message}", e)
+            Log.e("RightSheet", "❌ Navigation 실패: ${e.message}", e)
         }
     }
 }

@@ -13,6 +13,7 @@ import com.example.kotlin_amateur.core.auth.TokenStore
 import com.example.kotlin_amateur.model.SearchHistory
 import com.example.kotlin_amateur.remote.response.PostListResponse
 import com.example.kotlin_amateur.repository.PostRepository
+import com.example.kotlin_amateur.repository.PostDetailRepository
 import com.example.kotlin_amateur.repository.SearchHistoryRepository
 import com.example.kotlin_amateur.post.PostPagingSource
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -36,6 +37,7 @@ import javax.inject.Inject
 @HiltViewModel
 class PostListViewModel @Inject constructor(
     private val postRepository: PostRepository,
+    private val postDetailRepository: PostDetailRepository, // 🔥 좋아요 기능용 주입
     private val searchHistoryRepository: SearchHistoryRepository,
     private val application: Application
 ) : ViewModel() {
@@ -165,37 +167,26 @@ class PostListViewModel @Inject constructor(
     }
 
     /**
-     * 💖 게시글 좋아요 토글 (기존 기능 유지)
-     * @param postId 게시글 ID
-     * @param isLiked 좋아요 상태 (true: 좋아요, false: 좋아요 취소)
-     * @param callback 결과 콜백 (success: Boolean)
+     * 💖 게시글 좋아요 토글 (PostDetailRepository 사용)
+     * 서버 상태를 먼저 확인하여 올바른 API 호출
      */
-    fun toggleLike(postId: String, isLiked: Boolean, callback: (Boolean) -> Unit) {
+    fun toggleLike(postId: String, callback: (Boolean) -> Unit) {
+        Log.d("PostListViewModel", "💖 좋아요 토글 시작: $postId")
+        
         viewModelScope.launch {
-            try {
-                val accessToken = TokenStore.getAccessToken(application.applicationContext)
-                    ?: throw Exception("로그인이 필요합니다")
-
-                val response = if (isLiked) {
-                    postRepository.likePost(accessToken, postId)
-                } else {
-                    postRepository.unlikePost(accessToken, postId)
-                }
-
-                if (response.isSuccessful) {
-                    Log.d("PostListViewModel", "💖 좋아요 상태 변경 성공: $isLiked")
+            postDetailRepository.toggleLike(postId)
+                .onSuccess {
+                    Log.d("PostListViewModel", "✅ 좋아요 토글 성공: $postId")
                     callback(true)
-                } else {
-                    Log.e("PostListViewModel", "❌ 좋아요 상태 변경 실패: ${response.code()}")
+                }
+                .onFailure { exception ->
+                    Log.e("PostListViewModel", "❌ 좋아요 토글 실패: $postId - ${exception.message}")
                     callback(false)
                 }
-            } catch (e: Exception) {
-                Log.e("PostListViewModel", "❌ 좋아요 처리 중 오류: ${e.message}", e)
-                callback(false)
-            }
         }
     }
 
+    
     // 🔥 기존 API를 사용하는 메서드들 (역호환성을 위해 유지)
     @Deprecated("무한 스크롤로 대체됨. postsPagingFlow 사용 권장")
     fun loadDataFromServer() {
