@@ -828,7 +828,50 @@ fun ModernPostCard(
                     )
                 }
 
-                IconButton(onClick = { /* 공유 */ }) {
+                // 📤 공유 버튼 - 안드로이드 공유 Intent 사용
+                IconButton(
+                    onClick = {
+                        // 📤 공유할 컨텐츠 준비
+                        val shareText = buildString {
+                            if (post.postTitle.isNotBlank()) {
+                                append("📝 ${post.postTitle}\n\n")
+                            }
+                            append(post.postContent.take(200)) // 200자로 제한
+                            if (post.postContent.length > 200) {
+                                append("...")
+                            }
+                            append("\n\n👤 작성자: ${post.authorNickname}")
+                            append("\n📱 우리 앱에서 더 보기")
+                        }
+                        
+                        // 📤 안드로이드 공유 Intent 생성
+                        val shareIntent = android.content.Intent().apply {
+                            action = android.content.Intent.ACTION_SEND
+                            type = "text/plain"
+                            putExtra(android.content.Intent.EXTRA_TEXT, shareText)
+                            putExtra(android.content.Intent.EXTRA_SUBJECT, "게시글 공유")
+                        }
+                        
+                        // 📤 공유 앱 선택창 띄우기
+                        val chooserIntent = android.content.Intent.createChooser(
+                            shareIntent,
+                            "게시글 공유하기"
+                        )
+                        
+                        try {
+                            context.startActivity(chooserIntent)
+                            android.util.Log.d("ModernPostCard", "📤 공유 선택창 열기 성공")
+                        } catch (e: Exception) {
+                            android.util.Log.e("ModernPostCard", "📤 공유 실패: ${e.message}")
+                            // 폴백: Toast 메시지
+                            android.widget.Toast.makeText(
+                                context,
+                                "공유 기능을 사용할 수 없습니다",
+                                android.widget.Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    }
+                ) {
                     Icon(
                         Icons.Default.Share,
                         contentDescription = "공유",
