@@ -105,7 +105,10 @@ class RightSheetDialogFragment : DialogFragment() {
                                 // 게시글 상세 보기
                                 Log.d("RightSheet", "📖 게시글 상세: $postId")
                                 // 여기서 게시글 상세 화면으로 네비게이션 가능
-                            }
+                            },
+                            onNavigateToStorePromotion = TODO(),
+                            homeViewModel = TODO(),
+                            profileViewModel = TODO()
                         )
                         
                         // 🔙 뒤로가기 효과 (메뉴로 돌아가기)

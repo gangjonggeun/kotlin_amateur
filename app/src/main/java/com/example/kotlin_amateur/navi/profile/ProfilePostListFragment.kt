@@ -47,7 +47,7 @@ class ProfilePostListFragment : Fragment() {
             ?: arguments?.getString(ARG_POST_LIST_TYPE) // 폴백: 기존 방식도 지원
             ?: PostListType.MY_POSTS.name
         
-        android.util.Log.d(TAG, "📦 Argument 수신: $typeName")
+        Log.d(TAG, "📦 Argument 수신: $typeName")
         PostListType.valueOf(typeName)
     }
 
@@ -81,7 +81,8 @@ class ProfilePostListFragment : Fragment() {
                     },
                     // 🔥 ProfilePostViewModel 명시적 전달
                     profileViewModel = viewModel,
-                    homeViewModel = null // Profile에서는 HomeViewModel 사용 안함
+                    homeViewModel = null,
+                    onNavigateToStorePromotion = TODO() // Profile에서는 HomeViewModel 사용 안함
                 )
             }
         }
@@ -104,7 +105,7 @@ class ProfilePostListFragment : Fragment() {
 
         } catch (e: Exception) {
             // ❌ Exception 대신 가벼운 로깅 (50바이트 vs 3MB)
-            android.util.Log.e("ProfilePostListFragment", "네비게이션 실패: postId=$postId")
+            Log.e("ProfilePostListFragment", "네비게이션 실패: postId=$postId")
         }
     }
 //    override fun onResume() {

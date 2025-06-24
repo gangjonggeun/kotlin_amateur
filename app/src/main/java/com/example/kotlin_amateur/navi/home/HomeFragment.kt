@@ -44,7 +44,7 @@ class HomeFragment : Fragment() {
             setContent {
                 // 🎨 테마 적용
                 MaterialTheme {
-                    // 🚀 메모리 최적화된 ModernHomeScreen 사용
+                    // 🏪 가게 홍보 네비게이션 - 새로 추가!
                     ModernHomeScreen(
                         // 🎯 새로운 API 연결 - 상세 페이지 네비게이션
                         onNavigateToPostDetail = { postId, title ->
@@ -53,6 +53,10 @@ class HomeFragment : Fragment() {
                         // 📝 글 작성 페이지 네비게이션
                         onNavigateToAddPost = {
                             navigateToAddPost()
+                        },
+                        // 🏪 가게 홍보 페이지 네비게이션 - 새로 추가!
+                        onNavigateToStorePromotion = {
+                            navigateToStorePromotion()
                         },
                         // 🏠 홈 타입으로 설정 (기본값)
                         postListType = com.example.kotlin_amateur.core.PostListType.HOME,
@@ -117,6 +121,17 @@ class HomeFragment : Fragment() {
 
         } catch (e: Exception) {
             android.util.Log.e("HomeFragment", "글 작성 네비게이션 실패")
+        }
+    }
+
+    // 🏪 가게 홍보 페이지 네비게이션 - 새로 추가!
+    private fun navigateToStorePromotion() {
+        try {
+            findNavController().navigate(R.id.action_home_to_storePromotion)
+            android.util.Log.d("HomeFragment", "🏪 가게 홍보 페이지 이동")
+
+        } catch (e: Exception) {
+            android.util.Log.e("HomeFragment", "가게 홍보 네비게이션 실패")
         }
     }
 

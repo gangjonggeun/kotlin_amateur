@@ -55,6 +55,7 @@ object BrandColors {
 fun ModernHomeScreen(
     onNavigateToAddPost: () -> Unit,
     onNavigateToPostDetail: (String, String?) -> Unit,
+    onNavigateToStorePromotion: () -> Unit, // 🏪 가게 홍보 네비게이션 추가!
     postListType: PostListType = PostListType.HOME, // 🎯 타입 매개변수 추가
     onBackClick: (() -> Unit)? = null, // 🔙 뒤로가기 콜백 추가
     homeViewModel: PostListViewModel? = null, // 🏠 홈용 ViewModel (선택적)
@@ -281,7 +282,7 @@ fun ModernHomeScreen(
             ModernSpeedDial(
                 onAddPostClick = onNavigateToAddPost,
                 onLocationPromoteClick = {
-                    println("가게 홍보 기능")
+                    onNavigateToStorePromotion()
                 },
                 modifier = Modifier.padding(16.dp)
             )

@@ -20,6 +20,11 @@
             android:id="@+id/action_home_to_postDetail"
             app:destination="@id/postDetailFragment" />
         
+        <!-- 🏪 가게 홍보 화면 이동 - 새로 추가! -->
+        <action
+            android:id="@+id/action_home_to_storePromotion"
+            app:destination="@id/storePromotionFragment" />
+        
         <!-- 🎯 프로필 메뉴에서 게시글 타입별 화면 이동 -->
         <action
             android:id="@+id/action_home_to_myPosts"
@@ -44,6 +49,12 @@
         android:id="@+id/floatingAddFragment"
         android:name="com.example.kotlin_amateur.post.FloatingAddFragment"
         android:label="글 추가" />
+
+    <!-- 🏪 가게 홍보 화면 - 새로 추가! -->
+    <fragment
+        android:id="@+id/storePromotionFragment"
+        android:name="com.example.kotlin_amateur.navi.home.StorePromotionFragment"
+        android:label="가게 홍보" />
 
     <!-- 🏘️ 지역 홍보 화면 -->
     <fragment
