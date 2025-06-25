@@ -7,6 +7,7 @@ import androidx.compose.animation.core.*
 // 🖼️ Compose Foundation
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 
@@ -33,6 +34,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.res.painterResource
 
 // 📍 위치 관련
 import androidx.compose.ui.platform.LocalLifecycleOwner
@@ -65,6 +67,9 @@ import com.kakao.vectormap.label.LabelStyles
 
 // ⏰ Coroutines
 import kotlinx.coroutines.delay
+import androidx.compose.runtime.collectAsState
+import com.example.kotlin_amateur.state.StorePromotionResult
+import androidx.compose.runtime.LaunchedEffect
 
 // 🏷️ 키보드 관련
 import androidx.compose.foundation.text.KeyboardActions
@@ -80,25 +85,47 @@ fun StorePromotionScreen(
     viewModel: StorePromotionViewModel,
     onBackPress: () -> Unit
 ) {
+    // 🎯 ViewModel 상태 관찰
+    val promotionResult by viewModel.promotionResult.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
+
+    // 🔥 결과 처리 (콜백 방식)
+    LaunchedEffect(promotionResult) {
+        when (promotionResult) {
+            is StorePromotionResult.Success -> {
+                // 성공 시 콜백으로 즉시 처리
+                viewModel.clearResult()
+                onBackPress()
+            }
+            is StorePromotionResult.Error -> {
+                // 에러 로그 출력 후 상태 초기화
+                println("❌ 가게 등록 실패: ${(promotionResult as StorePromotionResult.Error).message}")
+                viewModel.clearResult()
+            }
+            else -> { /* Loading 또는 null */ }
+        }
+    }
+
     // 🗺️ 지도 관련 상태
     var mapView by remember { mutableStateOf<MapView?>(null) }
     var kakaoMap by remember { mutableStateOf<KakaoMap?>(null) }
 
     // 📍 위치 관련 상태
     var currentLocation by remember { mutableStateOf<LatLng?>(null) }
+    var mapCenterLocation by remember { mutableStateOf<LatLng?>(null) }  // 지도 중심점 좌표
     var hasLocationPermission by remember { mutableStateOf(false) }
     var isGpsEnabled by remember { mutableStateOf(false) }
     var showMap by remember { mutableStateOf(false) }
 
     // 🏪 가게 정보 입력 상태
     var storeName by remember { mutableStateOf("") }
-    var storeType by remember { mutableStateOf("맛집") }
+    var storeType by remember { mutableStateOf("restaurant") } // 영어 코드 직접 사용
     var discountInfo by remember { mutableStateOf("") }
     var promotionContent by remember { mutableStateOf("") }
 
     // 🎨 UI 상태
     var isExpanded by remember { mutableStateOf(false) }
-    var isSubmitting by remember { mutableStateOf(false) }
+    // isSubmitting을 isLoading으로 대체
 
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -126,13 +153,15 @@ fun StorePromotionScreen(
                     showMap = true
                     kakaoMap?.let { map ->
                         map.moveCamera(CameraUpdateFactory.newCenterPosition(location, 17))
-                        addCurrentLocationMarker(map, location)
+                        mapCenterLocation = location  // 위치 업데이트
                     }
                 }
             }
+
             hasLocationPermission && !isGpsEnabled -> {
                 showLocationSettingsDialog(context)
             }
+
             else -> {
                 showMap = false
             }
@@ -150,7 +179,7 @@ fun StorePromotionScreen(
                 showMap = true
                 kakaoMap?.let { map ->
                     map.moveCamera(CameraUpdateFactory.newCenterPosition(location, 17))
-                    addCurrentLocationMarker(map, location)
+                    mapCenterLocation = location  // 위치 업데이트
                 }
             }
         }
@@ -178,9 +207,11 @@ fun StorePromotionScreen(
                     )
                 )
             }
+
             hasLocationPermission && !isGpsEnabled -> {
                 showLocationSettingsDialog(context)
             }
+
             hasLocationPermission && isGpsEnabled -> {
                 getCurrentLocation(fusedLocationClient) { location ->
                     currentLocation = location
@@ -203,8 +234,13 @@ fun StorePromotionScreen(
                                 currentLocation = location
                                 showMap = true
                                 kakaoMap?.let { map ->
-                                    map.moveCamera(CameraUpdateFactory.newCenterPosition(location, 17))
-                                    addCurrentLocationMarker(map, location)
+                                    map.moveCamera(
+                                        CameraUpdateFactory.newCenterPosition(
+                                            location,
+                                            17
+                                        )
+                                    )
+                                    mapCenterLocation = location  // 위치 업데이트
                                 }
                             }
                         } else if (!isGpsEnabled) {
@@ -212,6 +248,7 @@ fun StorePromotionScreen(
                         }
                     }
                 }
+
                 else -> {}
             }
         }
@@ -251,9 +288,21 @@ fun StorePromotionScreen(
                         }, object : KakaoMapReadyCallback() {
                             override fun onMapReady(map: KakaoMap) {
                                 kakaoMap = map
+
+                                // 🎯 카메라 이동 종료 시 중심점 좌표 업데이트 (수정된 부분)
+                                map.setOnCameraMoveEndListener { _, cameraPosition, _ ->
+                                    mapCenterLocation = cameraPosition.position
+                                    println("📍 지도 중심 좌표: ${cameraPosition.position.latitude}, ${cameraPosition.position.longitude}")
+                                }
+
                                 currentLocation?.let { location ->
-                                    map.moveCamera(CameraUpdateFactory.newCenterPosition(location, 17))
-                                    addCurrentLocationMarker(map, location)
+                                    map.moveCamera(
+                                        CameraUpdateFactory.newCenterPosition(
+                                            location,
+                                            19
+                                        )
+                                    )
+                                    mapCenterLocation = location  // 초기 중심점 설정
                                 }
                             }
                         })
@@ -286,6 +335,7 @@ fun StorePromotionScreen(
             )
         }
 
+
         // 🎯 상단 헤더
         StorePromotionHeader(
             onBackPress = onBackPress,
@@ -306,15 +356,16 @@ fun StorePromotionScreen(
             onPromotionContentChange = { promotionContent = it },
             isExpanded = isExpanded,
             onExpandedChange = { isExpanded = it },
-            isSubmitting = isSubmitting,
+            isSubmitting = isLoading,
             onSubmit = {
                 // 🔥 입력 검증
                 if (storeName.isBlank()) {
                     return@StoreInfoInputPanel
                 }
 
-                isSubmitting = true
-                currentLocation?.let { location ->
+                // 지도 중심점 좌표 사용 (사용자가 선택한 위치)
+                mapCenterLocation?.let { location ->
+                    println("🔥 [등록] 전송되는 데이터: name=$storeName, type=$storeType")
                     viewModel.submitStorePromotion(
                         storeName = storeName,
                         storeType = storeType,
@@ -324,14 +375,6 @@ fun StorePromotionScreen(
                         longitude = location.longitude
                     )
                 }
-
-                // TODO: 실제 API 호출 후 결과에 따라 처리
-                // 임시로 2초 후 완료 처리
-                kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main).launch {
-                    delay(2000)
-                    isSubmitting = false
-                    onBackPress() // 성공 시 이전 화면으로
-                }
             },
             keyboardController = keyboardController,
             modifier = Modifier
@@ -340,7 +383,21 @@ fun StorePromotionScreen(
                 .zIndex(11f)
         )
 
-        // 📍 현재 위치 새로고침 버튼 (지도 표시될 때만)
+        // 🎯 화면 중앙 고정 마커 (지도 표시될 때만)
+        if (showMap) {
+            Icon(
+                painter = painterResource(id = R.drawable.blue_location_marker),
+                contentDescription = "위치 선택",
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .size(48.dp)
+                    .offset(y = (-24).dp)  // 마커의 뾰족한 부분이 정확한 위치를 가리키도록
+                    .zIndex(10f),
+                tint = Color.Unspecified  // 원본 색상 유지
+            )
+        }
+
+        // 📍 현재 위치로 이동 버튼 (지도 표시될 때만)
         if (showMap) {
             FloatingActionButton(
                 onClick = {
@@ -348,8 +405,8 @@ fun StorePromotionScreen(
                         getCurrentLocation(fusedLocationClient) { location ->
                             currentLocation = location
                             kakaoMap?.let { map ->
-                                map.moveCamera(CameraUpdateFactory.newCenterPosition(location, 17))
-                                addCurrentLocationMarker(map, location)
+                                map.moveCamera(CameraUpdateFactory.newCenterPosition(location, 19))
+                                mapCenterLocation = location  // 위치 업데이트
                             }
                         }
                     }
@@ -372,7 +429,6 @@ fun StorePromotionScreen(
         }
     }
 }
-
 // 🎯 상단 헤더
 @Composable
 fun StorePromotionHeader(
@@ -444,7 +500,28 @@ fun StoreInfoInputPanel(
     keyboardController: androidx.compose.ui.platform.SoftwareKeyboardController?,
     modifier: Modifier = Modifier
 ) {
-    val storeTypes = listOf("맛집", "카페", "편의점", "미용", "헬스", "스터디")
+    // 영어 코드를 한글로 매핑해서 UI에 표시
+    val englishToKoreanMap = mapOf(
+        "restaurant" to "맛집",
+        "cafe" to "카페",
+        "convenience" to "편의점",
+        "beauty" to "미용",
+        "fitness" to "헬스",
+        "study" to "스터디",
+        "other" to "기타"
+    )
+    
+    val koreanToEnglishMap = mapOf(
+        "맛집" to "restaurant",
+        "카페" to "cafe",
+        "편의점" to "convenience",
+        "미용" to "beauty",
+        "헬스" to "fitness",
+        "스터디" to "study",
+        "기타" to "other"
+    )
+    
+    val storeTypesKorean = listOf("맛집", "카페", "편의점", "미용", "헬스", "스터디", "기타")
     var isStoreTypeExpanded by remember { mutableStateOf(false) }
 
     val focusRequester = remember { FocusRequester() }
@@ -543,7 +620,7 @@ fun StoreInfoInputPanel(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         OutlinedTextField(
-                            value = storeType,
+                            value = "${getTypeEmoji(storeType)} ${getKoreanTypeName(storeType)}", // "☕ 카페" 형태로 표시
                             onValueChange = {},
                             readOnly = true,
                             label = { Text("가게 타입") },
@@ -561,16 +638,20 @@ fun StoreInfoInputPanel(
                             expanded = isStoreTypeExpanded,
                             onDismissRequest = { isStoreTypeExpanded = false }
                         ) {
-                            storeTypes.forEach { type ->
+                            // 영어 코드 목록
+                            val storeTypesEnglish = listOf("restaurant", "cafe", "convenience", "beauty", "fitness", "study", "other")
+                            
+                            storeTypesEnglish.forEach { englishType ->
                                 DropdownMenuItem(
                                     text = {
                                         Text(
-                                            text = "${getCategoryEmoji(type)} $type",
+                                            text = "${getTypeEmoji(englishType)} ${getKoreanTypeName(englishType)}",
                                             fontSize = 16.sp
                                         )
                                     },
                                     onClick = {
-                                        onStoreTypeChange(type)
+                                        onStoreTypeChange(englishType) // 영어 코드 직접 전달
+                                        println("🔥 [UI] 선택된 타입: ${getKoreanTypeName(englishType)} ($englishType)")
                                         isStoreTypeExpanded = false
                                     }
                                 )
@@ -721,7 +802,7 @@ fun StoreInfoInputPanel(
 
                     if (storeName.isNotBlank()) {
                         Text(
-                            text = getCategoryEmoji(storeType),
+                            text = "${getTypeEmoji(storeType)} ${getKoreanTypeName(storeType)}",
                             fontSize = 16.sp
                         )
                     }
@@ -888,47 +969,48 @@ private fun showLocationSettingsDialog(context: Context) {
     println("⚠️ GPS가 비활성화되어 있습니다. 설정에서 위치 서비스를 켜주세요.")
 }
 
-// 📍 현재 위치 마커 추가
-private fun addCurrentLocationMarker(kakaoMap: KakaoMap?, currentLocation: LatLng) {
-    try {
-        val labelLayer = kakaoMap?.labelManager?.layer
+// 📍 화면 중앙 고정 마커 - Compose UI로 구현 (지도 위에 오버레이)
+// 카카오맵 API 대신 Compose로 화면 중앙에 고정 마커 표시
 
-        // 🔍 이미 있는지 확인
-        val existingMarker = labelLayer?.getAllLabels()?.find {
-            it.tag == "store_location_marker"
-        }
+// 기존 addCurrentLocationMarker 함수는 제거됨 (화면 중앙 고정 마커로 대체)
 
-        if (existingMarker != null) {
-            labelLayer.remove(existingMarker)
-        }
-
-        val styles = kakaoMap?.labelManager
-            ?.addLabelStyles(LabelStyles.from(LabelStyle.from(R.drawable.red_dot_11)))
-
-        styles?.let { labelStyles ->
-            val options = LabelOptions.from(currentLocation)
-                .setStyles(labelStyles)
-                .setTag("store_location_marker")
-
-            labelLayer?.addLabel(options)
-            println("✅ 가게 위치 마커 추가 성공")
-        }
-
+// 🎯 올바른 방법 1: CameraPosition에서 position 사용
+private fun getMapCenterPosition(kakaoMap: KakaoMap?): LatLng? {
+    return try {
+        // cameraPosition?.position이 올바른 속성입니다
+        kakaoMap?.cameraPosition?.position
     } catch (e: Exception) {
-        println("❌ 가게 위치 마커 추가 실패: ${e.message}")
+        println("❌ 중심점 좌표 가져오기 실패: ${e.message}")
+        null
     }
 }
 
-// 🏷️ 카테고리별 이모지 반환
-private fun getCategoryEmoji(category: String): String {
-    return when (category) {
-        "카페" -> "☕"
-        "맛집" -> "🍽️"
-        "스터디" -> "📚"
-        "편의점" -> "🏪"
-        "미용" -> "💄"
-        "헬스" -> "💪"
+
+// 🏷️ 가게 타입별 이모지 반환 (UI 표시용)
+private fun getTypeEmoji(englishType: String): String {
+    return when (englishType) {
+        "restaurant" -> "🍽️"
+        "cafe" -> "☕"
+        "convenience" -> "🏩"
+        "beauty" -> "💄"
+        "fitness" -> "💪"
+        "study" -> "📚"
+        "other" -> "🏢"
         else -> "📍"
+    }
+}
+
+// 🏷️ 영어 코드 → 한글 이름 변환 (UI 표시용)
+private fun getKoreanTypeName(englishType: String): String {
+    return when (englishType) {
+        "restaurant" -> "맛집"
+        "cafe" -> "카페"
+        "convenience" -> "편의점"
+        "beauty" -> "미용"
+        "fitness" -> "헬스"
+        "study" -> "스터디"
+        "other" -> "기타"
+        else -> "기타"
     }
 }
 

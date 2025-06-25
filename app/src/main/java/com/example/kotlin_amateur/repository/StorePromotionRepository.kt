@@ -1,187 +1,199 @@
 package com.example.kotlin_amateur.repository
 
-import com.example.kotlin_amateur.viewmodel.StorePromotionRequest
-import com.example.kotlin_amateur.viewmodel.StorePromotionResponse
-import kotlinx.coroutines.delay
+import android.content.Context
+import com.example.kotlin_amateur.core.auth.TokenStore
+import com.example.kotlin_amateur.remote.api.StorePromotionApi
+import com.example.kotlin_amateur.remote.request.StorePromotionRequest
+import com.example.kotlin_amateur.remote.response.StorePromotionResponse
+import com.example.kotlin_amateur.remote.response.ApiResponse
+import dagger.hilt.android.qualifiers.ApplicationContext
+import retrofit2.Response
 import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * 🏪 가게 홍보 관련 리포지토리
- * 
- * 📌 메모리 최적화 원칙:
- * - Result 패턴 사용 (Exception 대신 - 50바이트 vs 3MB)
- * - 가벼운 에러 객체 사용
- * - 코루틴으로 비동기 처리 (UI 블로킹 방지)
+ * 🏪 스토어 프로모션 리포지토리 (메모리 최적화)
+ *
+ * 📌 메모리 안전 원칙:
+ * - ApiResult 패턴 사용 (Exception 대신)
+ * - 토큰 자동 관리 (TokenStore Object 활용)
+ * - 코루틴으로 비동기 처리
+ * - 간단한 영어 변환 (보낼 때만)
  */
 @Singleton
 class StorePromotionRepository @Inject constructor(
-    // TODO: API 인터페이스 주입 예정
-    // private val storePromotionApi: StorePromotionApi
+    private val storePromotionApi: StorePromotionApi,
+    @ApplicationContext private val context: Context
 ) {
 
     /**
-     * 🚀 가게 홍보 정보 서버 전송
-     * 
-     * @param request 가게 홍보 요청 데이터
-     * @return Result<StorePromotionResponse> 성공/실패 결과
+     * 🏪 가게 홍보 등록
      */
-    suspend fun submitStorePromotion(request: StorePromotionRequest): Result<StorePromotionResponse> {
+    suspend fun submitStorePromotion(request: StorePromotionRequest): ApiResult<StorePromotionResponse> {
         return try {
-            // 🔥 입력 데이터 검증
-            validateStorePromotionRequest(request)?.let { errorMessage ->
-                return Result.failure(IllegalArgumentException(errorMessage))
+            // 🔐 토큰 가져오기
+            val token = TokenStore.getAccessToken(context)
+                ?: return ApiResult.Error(401, "로그인이 필요합니다")
+
+            // 📝 로그와 함께 API 호출
+            println("📝 [리포지토리] 전송 데이터: $request")
+            val response = storePromotionApi.createStorePromotion("Bearer $token", request)
+            
+            val result = handleApiResponse(response)
+            if (result is ApiResult.Success) {
+                println("📝 [리포지토리] 서버 응답: ${result.data}")
             }
+            result
 
-            // TODO: 실제 API 호출로 교체 예정
-            // val response = storePromotionApi.submitStorePromotion(request)
-            
-            // 📨 임시 모의 API 응답 (실제 개발 시 제거)
-            delay(2000) // 네트워크 지연 시뮬레이션
-            
-            val mockResponse = StorePromotionResponse(
-                success = true,
-                message = "🎉 ${request.storeName}이(가) 성공적으로 등록되었습니다!",
-                storeId = "store_${System.currentTimeMillis()}",
-                createdAt = getCurrentTimestamp()
-            )
-
-            // 📊 성공 로그
-            println("✅ 가게 홍보 등록 성공:")
-            println("   - 가게명: ${request.storeName}")
-            println("   - 타입: ${request.storeType}")
-            println("   - 위치: ${request.latitude}, ${request.longitude}")
-            println("   - 할인정보: ${request.discountInfo}")
-            println("   - 홍보내용: ${request.promotionContent}")
-
-            Result.success(mockResponse)
-
-        } catch (e: IllegalArgumentException) {
-            // 🔍 입력 검증 실패
-            println("❌ 입력 검증 실패: ${e.message}")
-            Result.failure(e)
-            
         } catch (e: Exception) {
-            // 🌐 네트워크 또는 기타 오류 (메모리 안전하게 처리)
-            val safeError = when {
-                e.message?.contains("network", true) == true -> 
-                    Exception("네트워크 연결을 확인해주세요")
-                e.message?.contains("timeout", true) == true -> 
-                    Exception("요청 시간이 초과되었습니다")
-                e.message?.contains("server", true) == true -> 
-                    Exception("서버에 일시적인 문제가 발생했습니다")
-                else -> 
-                    Exception("가게 등록 중 오류가 발생했습니다")
-            }
-            
-            println("❌ API 호출 실패: ${e.message}")
-            Result.failure(safeError)
+            handleException(e)
         }
     }
 
     /**
-     * 🔍 가게 홍보 요청 데이터 검증
-     * 
-     * @param request 검증할 요청 데이터
-     * @return String? 오류 메시지 (null이면 검증 통과)
+     * 📍 근처 가게 검색
      */
-    private fun validateStorePromotionRequest(request: StorePromotionRequest): String? {
+    suspend fun getNearbyStores(
+        lat: Double,
+        lng: Double,
+        radius: Double = 5.0
+    ): ApiResult<List<StorePromotionResponse>> {
+        return try {
+            val token = TokenStore.getAccessToken(context)
+                ?: return ApiResult.Error(401, "로그인이 필요합니다")
+
+            val response = storePromotionApi.getNearbyStores("Bearer $token", lat, lng, radius)
+            handleApiResponse(response)
+
+        } catch (e: Exception) {
+            handleException(e)
+        }
+    }
+
+    /**
+     * 🔍 가게 검색
+     */
+    suspend fun searchStores(keyword: String): ApiResult<List<StorePromotionResponse>> {
+        return try {
+            val token = TokenStore.getAccessToken(context)
+                ?: return ApiResult.Error(401, "로그인이 필요합니다")
+
+            val response = storePromotionApi.searchStores("Bearer $token", keyword.trim())
+            handleApiResponse(response)
+
+        } catch (e: Exception) {
+            handleException(e)
+        }
+    }
+
+    /**
+     * 👤 내 가게 목록
+     */
+    suspend fun getMyStores(): ApiResult<List<StorePromotionResponse>> {
+        return try {
+            val token = TokenStore.getAccessToken(context)
+                ?: return ApiResult.Error(401, "로그인이 필요합니다")
+
+            val response = storePromotionApi.getMyStores("Bearer $token")
+            handleApiResponse(response)
+
+        } catch (e: Exception) {
+            handleException(e)
+        }
+    }
+
+    /**
+     * 🗑️ 가게 삭제
+     */
+    suspend fun deleteStorePromotion(storeId: Long): ApiResult<Boolean> {
+        return try {
+            val token = TokenStore.getAccessToken(context)
+                ?: return ApiResult.Error(401, "로그인이 필요합니다")
+
+            val response = storePromotionApi.deleteStorePromotion("Bearer $token", storeId)
+            handleApiResponse(response)
+
+        } catch (e: Exception) {
+            handleException(e)
+        }
+    }
+
+    /**
+     * 🏪 가게 타입 목록
+     */
+    suspend fun getStoreTypes(): ApiResult<List<String>> {
+        return try {
+            val token = TokenStore.getAccessToken(context)
+                ?: return ApiResult.Error(401, "로그인이 필요합니다")
+
+            val response = storePromotionApi.getStoreTypes("Bearer $token")
+            handleApiResponse(response)
+
+        } catch (e: Exception) {
+            handleException(e)
+        }
+    }
+
+    // ==================== Private Helper Methods ====================
+
+    /**
+     * 🌐 API 응답 처리 (제네릭)
+     */
+    private fun <T> handleApiResponse(response: Response<ApiResponse<T>>): ApiResult<T> {
         return when {
-            request.storeName.isBlank() -> 
-                "가게 이름을 입력해주세요"
-                
-            request.storeName.length > 50 -> 
-                "가게 이름은 50자 이내로 입력해주세요"
-                
-            request.storeType.isBlank() -> 
-                "가게 타입을 선택해주세요"
-                
-            !isValidStoreType(request.storeType) -> 
-                "올바른 가게 타입을 선택해주세요"
-                
-            request.promotionContent.length > 200 -> 
-                "홍보 내용은 200자 이내로 입력해주세요"
-                
-            !isValidLocation(request.latitude, request.longitude) -> 
-                "올바른 위치 정보가 필요합니다"
-                
-            request.discountInfo.length > 100 -> 
-                "할인 정보는 100자 이내로 입력해주세요"
-                
-            else -> null // 검증 통과
+            response.isSuccessful -> {
+                val apiResponse = response.body()
+                when {
+                    apiResponse == null -> ApiResult.Error(500, "응답 데이터가 없습니다")
+                    apiResponse.success && apiResponse.data != null -> ApiResult.Success(apiResponse.data)
+                    else -> ApiResult.Error(400, apiResponse.message ?: "요청 처리에 실패했습니다")
+                }
+            }
+            response.code() == 401 -> ApiResult.Error(401, "로그인이 만료되었습니다")
+            response.code() == 403 -> ApiResult.Error(403, "권한이 없습니다")
+            response.code() == 404 -> ApiResult.Error(404, "요청한 데이터를 찾을 수 없습니다")
+            response.code() in 500..599 -> ApiResult.Error(500, "서버에 일시적인 문제가 발생했습니다")
+            else -> ApiResult.Error(response.code(), "네트워크 오류가 발생했습니다")
         }
     }
 
     /**
-     * 🏷️ 유효한 가게 타입인지 확인
+     * ⚠️ Exception 처리 (메모리 안전)
      */
-    private fun isValidStoreType(storeType: String): Boolean {
-        val validTypes = listOf("맛집", "카페", "편의점", "미용", "헬스", "스터디")
-        return storeType in validTypes
-    }
-
-    /**
-     * 📍 유효한 위치 좌표인지 확인
-     */
-    private fun isValidLocation(latitude: Double, longitude: Double): Boolean {
-        return latitude in -90.0..90.0 && longitude in -180.0..180.0
-    }
-
-    /**
-     * ⏰ 현재 시간 문자열 반환
-     */
-    private fun getCurrentTimestamp(): String {
-        return java.text.SimpleDateFormat(
-            "yyyy-MM-dd HH:mm:ss", 
-            java.util.Locale.getDefault()
-        ).format(java.util.Date())
-    }
-
-    /**
-     * 📋 등록된 가게 목록 조회 (향후 기능)
-     * TODO: 실제 API 연동 시 구현
-     */
-    suspend fun getMyStorePromotions(): Result<List<StorePromotionResponse>> {
-        return try {
-            // 임시 빈 목록 반환
-            delay(1000)
-            Result.success(emptyList())
-        } catch (e: Exception) {
-            Result.failure(Exception("가게 목록을 불러올 수 없습니다"))
+    private fun <T> handleException(e: Exception): ApiResult<T> {
+        val errorMessage = when {
+            e.message?.contains("network", ignoreCase = true) == true -> "네트워크 연결을 확인해주세요"
+            e.message?.contains("timeout", ignoreCase = true) == true -> "요청 시간이 초과되었습니다"
+            e.message?.contains("host", ignoreCase = true) == true -> "서버에 연결할 수 없습니다"
+            else -> "요청 처리 중 오류가 발생했습니다"
         }
-    }
 
-    /**
-     * 🗑️ 가게 홍보 삭제 (향후 기능)
-     * TODO: 실제 API 연동 시 구현
-     */
-    suspend fun deleteStorePromotion(storeId: String): Result<Boolean> {
-        return try {
-            delay(1000)
-            Result.success(true)
-        } catch (e: Exception) {
-            Result.failure(Exception("가게 삭제에 실패했습니다"))
-        }
+        return ApiResult.Error(0, errorMessage)
     }
 }
 
 /**
- * 📡 향후 API 인터페이스 예시
- * TODO: 실제 서버 연동 시 구현
+ * 🎯 API 결과 처리용 Sealed Class (기존 스타일 유지)
  */
-/*
-interface StorePromotionApi {
-    @POST("api/store-promotions")
-    suspend fun submitStorePromotion(
-        @Body request: StorePromotionRequest
-    ): Response<StorePromotionResponse>
-    
-    @GET("api/store-promotions/my")
-    suspend fun getMyStorePromotions(): Response<List<StorePromotionResponse>>
-    
-    @DELETE("api/store-promotions/{storeId}")
-    suspend fun deleteStorePromotion(
-        @Path("storeId") storeId: String
-    ): Response<Boolean>
+sealed class ApiResult<out T> {
+    data class Success<T>(val data: T) : ApiResult<T>()
+    data class Error<T>(val code: Int, val message: String) : ApiResult<T>()
+    data class Loading<T>(val message: String = "로딩 중...") : ApiResult<T>()
 }
-*/
+
+/**
+ * 🛠️ ApiResult 확장 함수들
+ */
+inline fun <T> ApiResult<T>.onSuccess(action: (T) -> Unit): ApiResult<T> {
+    if (this is ApiResult.Success) action(data)
+    return this
+}
+
+inline fun <T> ApiResult<T>.onError(action: (Int, String) -> Unit): ApiResult<T> {
+    if (this is ApiResult.Error) action(code, message)
+    return this
+}
+
+fun <T> ApiResult<T>.isSuccess(): Boolean = this is ApiResult.Success
+fun <T> ApiResult<T>.isError(): Boolean = this is ApiResult.Error
+fun <T> ApiResult<T>.isLoading(): Boolean = this is ApiResult.Loading

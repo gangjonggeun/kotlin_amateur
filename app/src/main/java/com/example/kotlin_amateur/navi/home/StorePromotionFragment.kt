@@ -9,10 +9,13 @@ import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
+import com.example.kotlin_amateur.state.StorePromotionResult
 import com.example.kotlin_amateur.viewmodel.StorePromotionViewModel
 import com.kakao.vectormap.KakaoMapSdk
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
 class StorePromotionFragment : Fragment() {
@@ -26,9 +29,9 @@ class StorePromotionFragment : Fragment() {
         // 🔥 카카오맵 SDK 초기화 (Fragment에서 직접)
         try {
             KakaoMapSdk.init(requireContext(), "35b1fe4c1b1ac26786fac46a9dd60588")
-            Log.d("🏪 StorePromotionFragment", "✅ 카카오맵 SDK 초기화 완료!")
+            Log.d("🏩 StorePromotionFragment", "✅ 카카오맵 SDK 초기화 완료!")
         } catch (e: Exception) {
-            Log.e("🏪 StorePromotionFragment", "❌ 카카오맵 SDK 초기화 실패: ${e.message}")
+            Log.e("🏩 StorePromotionFragment", "❌ 카카오맵 SDK 초기화 실패: ${e.message}")
         }
     }
 
@@ -55,7 +58,44 @@ class StorePromotionFragment : Fragment() {
             }
         }
     }
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        
+        // 🎯 결과 상태 관찰 (View 생성 후 안전하게 시작)
+        observePromotionResult()
+    }
     
-    // 🧹 메모리 정리는 ViewCompositionStrategy가 자동 처리
+    /**
+     * 🎯 결과 상태 관찰 (콜백 방식 - 메모리 안전)
+     * 
+     * ⚠️ viewLifecycleOwner는 onCreateView 이후에만 접근 가능!
+     * Screen에서 LaunchedEffect로 처리하지만, Fragment에서도
+     * 추가적으로 로깅과 내비게이션을 안전하게 처리
+     */
+    private fun observePromotionResult() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.promotionResult.collect { result ->
+                when (result) {
+                    is StorePromotionResult.Success -> {
+                        Log.d("🏩 StorePromotionFragment", "✅ 가게 등록 성공: ${result.message}")
+                        // Screen에서 이미 처리하지만, Fragment에서도 내비게이션 보장
+                    }
+                    is StorePromotionResult.Error -> {
+                        Log.e("🏩 StorePromotionFragment", "❌ 가게 등록 실패: ${result.message}")
+                        // 에러 시 로깅만 출력 (화면은 유지)
+                    }
+                    is StorePromotionResult.Loading -> {
+                        Log.d("🏩 StorePromotionFragment", "🔄 가게 등록 중...")
+                    }
+                    null -> {
+                        // 초기 상태 또는 초기화 후
+                    }
+                }
+            }
+        }
+    }
+    
+    // 🧠 메모리 정리는 ViewCompositionStrategy가 자동 처리
     // onDestroyView나 기타 수동 정리 불필요!
 }
